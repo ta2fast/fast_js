@@ -23,18 +23,20 @@ export async function GET(): Promise<NextResponse<ApiResponse<Rider[]>>> {
 export async function POST(request: NextRequest): Promise<NextResponse<ApiResponse<Rider>>> {
     try {
         const body = await request.json();
-        const { name, number, photo } = body;
+        const { name, riderName, number, photo } = body;
 
-        if (!name || number === undefined) {
+        console.log('Creating rider:', { name, riderName, number, photo });
+
+        if (!name || !riderName || number === undefined) {
             return NextResponse.json(
-                { success: false, error: '名前と背番号は必須です' },
+                { success: false, error: '名前、ライダーネーム、背番号は必須です' },
                 { status: 400 }
             );
         }
 
         const rider = await createRider({
             name,
-            riderName: name,
+            riderName,
             number,
             photo: photo || '/images/default-rider.png',
         });

@@ -10,7 +10,7 @@ export default function RidersManagementPage() {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editingRider, setEditingRider] = useState<Rider | null>(null);
-    const [formData, setFormData] = useState({ name: '', riderName: '', photo: '' });
+    const [formData, setFormData] = useState({ name: '', riderName: '', number: '', photo: '' });
     const [saving, setSaving] = useState(false);
     const router = useRouter();
 
@@ -32,7 +32,7 @@ export default function RidersManagementPage() {
 
     function openAddModal() {
         setEditingRider(null);
-        setFormData({ name: '', riderName: '', photo: '' });
+        setFormData({ name: '', riderName: '', number: '', photo: '' });
         setShowModal(true);
     }
 
@@ -41,14 +41,21 @@ export default function RidersManagementPage() {
         setFormData({
             name: rider.name,
             riderName: rider.riderName || '',
+            number: rider.number.toString(),
             photo: rider.photo || ''
         });
         setShowModal(true);
     }
 
     async function handleSave() {
-        if (!formData.name || !formData.riderName) {
-            alert('名前とライダーネームは必須です');
+        if (!formData.name || !formData.riderName || !formData.number) {
+            alert('名前、ライダーネーム、背番号は必須です');
+            return;
+        }
+
+        const numberValue = parseInt(formData.number);
+        if (isNaN(numberValue) || numberValue <= 0) {
+            alert('背番号は正の整数で入力してください');
             return;
         }
 
@@ -56,8 +63,10 @@ export default function RidersManagementPage() {
         try {
             const method = editingRider ? 'PUT' : 'POST';
             const body = editingRider
-                ? { id: editingRider.id, ...formData }
-                : { ...formData };
+                ? { id: editingRider.id, ...formData, number: numberValue }
+                : { ...formData, number: numberValue };
+
+            console.log('Saving rider:', { method, body });
 
             const res = await fetch('/api/riders', {
                 method,
@@ -66,6 +75,7 @@ export default function RidersManagementPage() {
             });
 
             const data = await res.json();
+            console.log('API response:', data);
             if (data.success) {
                 setShowModal(false);
                 fetchRiders();
@@ -172,7 +182,7 @@ export default function RidersManagementPage() {
                                     <div>
                                         <h3 className="font-bold">{rider.name}</h3>
                                         <span className="text-sm text-[var(--text-muted)]">
-                                            {rider.riderName}
+                                            {rider.riderName} (#{rider.number})
                                         </span>
                                     </div>
                                 </div>
@@ -228,6 +238,20 @@ export default function RidersManagementPage() {
                                     onChange={e => setFormData(prev => ({ ...prev, riderName: e.target.value }))}
                                     className="input"
                                     placeholder="TARO"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm text-[var(--text-muted)] mb-2">
+                                    背番号 *
+                                </label>
+                                <input
+                                    type="number"
+                                    value={formData.number}
+                                    onChange={e => setFormData(prev => ({ ...prev, number: e.target.value }))}
+                                    className="input"
+                                    placeholder="1"
+                                    min="1"
                                 />
                             </div>
 
