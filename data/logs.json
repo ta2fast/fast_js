@@ -1,0 +1,75 @@
+[
+  {
+    "id": "log_1768481365699_gu41rz",
+    "type": "setting_change",
+    "action": "Rider created",
+    "data": {
+      "rider": {
+        "name": "????",
+        "number": 1,
+        "photo": "/images/default-rider.png",
+        "id": "rider_1768481365694_eu4kay",
+        "createdAt": "2026-01-15T12:49:25.694Z"
+      }
+    },
+    "timestamp": "2026-01-15T12:49:25.699Z"
+  },
+  {
+    "id": "log_1768481380303_c0i3dm",
+    "type": "setting_change",
+    "action": "Rider created",
+    "data": {
+      "rider": {
+        "name": "????",
+        "number": 2,
+        "photo": "/images/default-rider.png",
+        "id": "rider_1768481380301_r0f56s",
+        "createdAt": "2026-01-15T12:49:40.301Z"
+      }
+    },
+    "timestamp": "2026-01-15T12:49:40.303Z"
+  },
+  {
+    "id": "log_1768481402435_wnydoe",
+    "type": "voting_control",
+    "action": "Voting started",
+    "data": {},
+    "timestamp": "2026-01-15T12:50:02.435Z"
+  },
+  {
+    "id": "log_1768481614420_9m1fnm",
+    "type": "audience_vote",
+    "action": "Audience vote submitted",
+    "data": {
+      "vote": {
+        "riderId": "rider_1768481365694_eu4kay",
+        "score": 3,
+        "deviceId": "1c59887cc7a638fec3819e6451d272ab83b3758c7424fb846b15036ac574c3e2",
+        "ip": "::1",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0",
+        "id": "vote_1768481614412_qslm1r",
+        "timestamp": "2026-01-15T12:53:34.412Z",
+        "canModifyUntil": "2026-01-15T12:53:44.412Z"
+      }
+    },
+    "timestamp": "2026-01-15T12:53:34.420Z"
+  },
+  {
+    "id": "log_1768481636981_ww5xpv",
+    "type": "audience_vote",
+    "action": "Audience vote submitted",
+    "data": {
+      "vote": {
+        "riderId": "rider_1768481380301_r0f56s",
+        "score": 4,
+        "deviceId": "1c59887cc7a638fec3819e6451d272ab83b3758c7424fb846b15036ac574c3e2",
+        "ip": "::1",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0",
+        "id": "vote_1768481636976_cik3iq",
+        "timestamp": "2026-01-15T12:53:56.976Z",
+        "canModifyUntil": "2026-01-15T12:54:06.976Z"
+      }
+    },
+    "timestamp": "2026-01-15T12:53:56.981Z"
+  }
+]
