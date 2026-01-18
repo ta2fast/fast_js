@@ -74,16 +74,18 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
         }
 
         // IPアドレスとUserAgentを取得
-        const ip = request.headers.get('x-forwarded-for') ||
+        const forwardedIp = request.headers.get('x-forwarded-for') ||
             request.headers.get('x-real-ip') ||
             'unknown';
+        // x-forwarded-for はカンマ区切りで複数のIPを含む場合があるため、最初のIPを取得
+        const ip = forwardedIp.split(',')[0].trim();
         const userAgent = request.headers.get('user-agent') || 'unknown';
 
         const vote = await submitAudienceVote({
             riderId,
             score,
             deviceId,
-            ip: typeof ip === 'string' ? ip : ip.split(',')[0],
+            ip,
             userAgent,
         });
 
