@@ -157,7 +157,7 @@ export default function VotePage() {
                         onClick={() => router.push('/audience')}
                         className="btn btn-primary w-full"
                     >
-                        選手一覧に戻る
+                        戻る
                     </button>
                 </div>
             </div>
@@ -181,7 +181,7 @@ export default function VotePage() {
                         onClick={() => router.push('/audience')}
                         className="btn btn-ghost w-full"
                     >
-                        選手一覧に戻る
+                        戻る
                     </button>
                 </div>
             </div>
@@ -224,7 +224,7 @@ export default function VotePage() {
                     </div>
                     <div>
                         <h2 className="text-2xl font-bold">{rider.name}</h2>
-                        <span className="rider-number">{rider.number}</span>
+                        <span className="text-[var(--text-muted)]">{rider.riderName}</span>
                     </div>
                 </div>
             </div>

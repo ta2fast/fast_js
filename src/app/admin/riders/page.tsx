@@ -10,7 +10,7 @@ export default function RidersManagementPage() {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editingRider, setEditingRider] = useState<Rider | null>(null);
-    const [formData, setFormData] = useState({ name: '', number: '', photo: '' });
+    const [formData, setFormData] = useState({ name: '', riderName: '', photo: '' });
     const [saving, setSaving] = useState(false);
     const router = useRouter();
 
@@ -32,7 +32,7 @@ export default function RidersManagementPage() {
 
     function openAddModal() {
         setEditingRider(null);
-        setFormData({ name: '', number: '', photo: '' });
+        setFormData({ name: '', riderName: '', photo: '' });
         setShowModal(true);
     }
 
@@ -40,15 +40,15 @@ export default function RidersManagementPage() {
         setEditingRider(rider);
         setFormData({
             name: rider.name,
-            number: rider.number.toString(),
+            riderName: rider.riderName || '',
             photo: rider.photo || ''
         });
         setShowModal(true);
     }
 
     async function handleSave() {
-        if (!formData.name || !formData.number) {
-            alert('名前と背番号は必須です');
+        if (!formData.name || !formData.riderName) {
+            alert('名前とライダーネームは必須です');
             return;
         }
 
@@ -56,8 +56,8 @@ export default function RidersManagementPage() {
         try {
             const method = editingRider ? 'PUT' : 'POST';
             const body = editingRider
-                ? { id: editingRider.id, ...formData, number: parseInt(formData.number) }
-                : { ...formData, number: parseInt(formData.number) };
+                ? { id: editingRider.id, ...formData }
+                : { ...formData };
 
             const res = await fetch('/api/riders', {
                 method,
@@ -112,15 +112,8 @@ export default function RidersManagementPage() {
         <div className="min-h-screen p-4 md:p-8">
             {/* Header */}
             <header className="mb-8">
-                <div className="flex items-center justify-between mb-4">
-                    <button
-                        onClick={() => router.push('/')}
-                        className="text-[var(--text-muted)] hover:text-[var(--foreground)] transition-colors"
-                    >
-                        ← トップに戻る
-                    </button>
+                <div className="flex items-center justify-center mb-4">
                     <h1 className="text-2xl font-bold">⚙️ 運営画面</h1>
-                    <div></div>
                 </div>
 
                 {/* Navigation */}
@@ -136,6 +129,9 @@ export default function RidersManagementPage() {
                     </Link>
                     <Link href="/admin/logs" className="nav-item">
                         ログ
+                    </Link>
+                    <Link href="/admin/help" className="nav-item">
+                        使い方
                     </Link>
                 </nav>
             </header>
@@ -176,7 +172,7 @@ export default function RidersManagementPage() {
                                     <div>
                                         <h3 className="font-bold">{rider.name}</h3>
                                         <span className="text-sm text-[var(--text-muted)]">
-                                            背番号: {rider.number}
+                                            {rider.riderName}
                                         </span>
                                     </div>
                                 </div>
@@ -224,15 +220,14 @@ export default function RidersManagementPage() {
 
                             <div>
                                 <label className="block text-sm text-[var(--text-muted)] mb-2">
-                                    背番号 *
+                                    ライダーネーム *
                                 </label>
                                 <input
-                                    type="number"
-                                    value={formData.number}
-                                    onChange={e => setFormData(prev => ({ ...prev, number: e.target.value }))}
+                                    type="text"
+                                    value={formData.riderName}
+                                    onChange={e => setFormData(prev => ({ ...prev, riderName: e.target.value }))}
                                     className="input"
-                                    placeholder="1"
-                                    min="1"
+                                    placeholder="TARO"
                                 />
                             </div>
 

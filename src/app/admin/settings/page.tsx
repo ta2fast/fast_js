@@ -131,15 +131,8 @@ export default function SettingsPage() {
         <div className="min-h-screen p-4 md:p-8">
             {/* Header */}
             <header className="mb-8">
-                <div className="flex items-center justify-between mb-4">
-                    <button
-                        onClick={() => router.push('/')}
-                        className="text-[var(--text-muted)] hover:text-[var(--foreground)] transition-colors"
-                    >
-                        ← トップに戻る
-                    </button>
+                <div className="flex items-center justify-center mb-4">
                     <h1 className="text-2xl font-bold">⚙️ 運営画面</h1>
-                    <div></div>
                 </div>
 
                 {/* Navigation */}
@@ -155,6 +148,9 @@ export default function SettingsPage() {
                     </Link>
                     <Link href="/admin/logs" className="nav-item">
                         ログ
+                    </Link>
+                    <Link href="/admin/help" className="nav-item">
+                        使い方
                     </Link>
                 </nav>
             </header>
@@ -281,8 +277,8 @@ export default function SettingsPage() {
                                 <div
                                     key={item.id}
                                     className={`flex items-center justify-between p-4 rounded-xl transition-all ${item.enabled
-                                            ? 'bg-[var(--surface-light)]'
-                                            : 'bg-[var(--surface)] opacity-50'
+                                        ? 'bg-[var(--surface-light)]'
+                                        : 'bg-[var(--surface)] opacity-50'
                                         }`}
                                 >
                                     <div className="flex items-center gap-4">

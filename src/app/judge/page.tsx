@@ -9,7 +9,17 @@ export default function JudgePage() {
     const [judges, setJudges] = useState<Judge[]>([]);
     const [selectedJudge, setSelectedJudge] = useState<string>('');
     const [loading, setLoading] = useState(true);
+    const [mounted, setMounted] = useState(false);
     const router = useRouter();
+
+    // クライアントサイドでマウント後にlocalStorageを読み込む
+    useEffect(() => {
+        setMounted(true);
+        const storedJudgeId = localStorage.getItem('bmx_judge_id');
+        if (storedJudgeId) {
+            setSelectedJudge(storedJudgeId);
+        }
+    }, []);
 
     useEffect(() => {
         fetchData();
@@ -29,12 +39,6 @@ export default function JudgePage() {
             if (judgesData.success && judgesData.data.judges) {
                 setJudges(judgesData.data.judges);
             }
-
-            // ローカルストレージからジャッジIDを復元
-            const storedJudgeId = localStorage.getItem('bmx_judge_id');
-            if (storedJudgeId) {
-                setSelectedJudge(storedJudgeId);
-            }
         } catch (error) {
             console.error('Failed to fetch data:', error);
         } finally {
@@ -44,7 +48,9 @@ export default function JudgePage() {
 
     function handleJudgeSelect(judgeId: string) {
         setSelectedJudge(judgeId);
-        localStorage.setItem('bmx_judge_id', judgeId);
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('bmx_judge_id', judgeId);
+        }
     }
 
     function handleRiderSelect(riderId: string) {
@@ -55,7 +61,7 @@ export default function JudgePage() {
         router.push(`/judge/score/${riderId}?judgeId=${selectedJudge}`);
     }
 
-    if (loading) {
+    if (loading || !mounted) {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <div className="text-xl text-[var(--text-muted)]">読み込み中...</div>
@@ -67,12 +73,6 @@ export default function JudgePage() {
         <div className="min-h-screen p-4 pb-24">
             {/* Header */}
             <header className="mb-6">
-                <button
-                    onClick={() => router.push('/')}
-                    className="text-[var(--text-muted)] hover:text-[var(--foreground)] transition-colors mb-4"
-                >
-                    ← トップに戻る
-                </button>
                 <h1 className="text-2xl font-bold text-center mb-2">📋 ジャッジ採点</h1>
                 <p className="text-center text-[var(--text-muted)]">
                     技術評価を採点してください
@@ -131,7 +131,7 @@ export default function JudgePage() {
                             {/* Info */}
                             <div className="flex-1">
                                 <h3 className="font-bold text-lg">{rider.name}</h3>
-                                <span className="rider-number text-sm w-8 h-8">{rider.number}</span>
+                                <span className="text-sm text-[var(--text-muted)]">{rider.riderName}</span>
                             </div>
 
                             {/* Arrow */}

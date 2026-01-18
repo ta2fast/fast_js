@@ -72,15 +72,8 @@ export default function LogsPage() {
         <div className="min-h-screen p-4 md:p-8">
             {/* Header */}
             <header className="mb-8">
-                <div className="flex items-center justify-between mb-4">
-                    <button
-                        onClick={() => router.push('/')}
-                        className="text-[var(--text-muted)] hover:text-[var(--foreground)] transition-colors"
-                    >
-                        ← トップに戻る
-                    </button>
+                <div className="flex items-center justify-center mb-4">
                     <h1 className="text-2xl font-bold">⚙️ 運営画面</h1>
-                    <div></div>
                 </div>
 
                 {/* Navigation */}
@@ -96,6 +89,9 @@ export default function LogsPage() {
                     </Link>
                     <Link href="/admin/logs" className="nav-item active">
                         ログ
+                    </Link>
+                    <Link href="/admin/help" className="nav-item">
+                        使い方
                     </Link>
                 </nav>
             </header>

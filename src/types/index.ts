@@ -7,8 +7,8 @@
 export interface Rider {
   id: string;
   name: string;
-  number: number;      // 背番号
-  photo: string;       // 写真URL
+  riderName: string;  // ライダーネーム（表示名）
+  photo: string;      // 写真URL
   createdAt: string;
 }
 

@@ -1,29 +1,32 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { RiderResult, ContestSettings } from '@/types';
+import { RiderResult, ContestSettings, Rider } from '@/types';
 
 export default function AdminPage() {
     const [results, setResults] = useState<RiderResult[]>([]);
+    const [riders, setRiders] = useState<Rider[]>([]);
     const [settings, setSettings] = useState<ContestSettings | null>(null);
     const [loading, setLoading] = useState(true);
     const [toggling, setToggling] = useState(false);
-    const router = useRouter();
+    const [selectingRider, setSelectingRider] = useState(false);
 
     const fetchData = useCallback(async () => {
         try {
-            const [scoresRes, settingsRes] = await Promise.all([
+            const [scoresRes, settingsRes, ridersRes] = await Promise.all([
                 fetch('/api/scores'),
                 fetch('/api/admin/settings'),
+                fetch('/api/riders'),
             ]);
 
             const scoresData = await scoresRes.json();
             const settingsData = await settingsRes.json();
+            const ridersData = await ridersRes.json();
 
             if (scoresData.success) setResults(scoresData.data);
             if (settingsData.success) setSettings(settingsData.data);
+            if (ridersData.success) setRiders(ridersData.data);
         } catch (error) {
             console.error('Failed to fetch data:', error);
         } finally {
@@ -62,6 +65,28 @@ export default function AdminPage() {
         }
     }
 
+    async function selectCurrentRider(riderId: string | null) {
+        setSelectingRider(true);
+        try {
+            const res = await fetch('/api/admin/settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    currentRiderId: riderId,
+                }),
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                setSettings(data.data);
+            }
+        } catch (error) {
+            console.error('Failed to select rider:', error);
+        } finally {
+            setSelectingRider(false);
+        }
+    }
+
     function getRankClass(rank: number): string {
         switch (rank) {
             case 1: return 'rank-1';
@@ -70,6 +95,8 @@ export default function AdminPage() {
             default: return 'rank-other';
         }
     }
+
+    const currentRider = riders.find(r => r.id === settings?.currentRiderId);
 
     if (loading) {
         return (
@@ -83,15 +110,8 @@ export default function AdminPage() {
         <div className="min-h-screen p-4 md:p-8">
             {/* Header */}
             <header className="mb-8">
-                <div className="flex items-center justify-between mb-4">
-                    <button
-                        onClick={() => router.push('/')}
-                        className="text-[var(--text-muted)] hover:text-[var(--foreground)] transition-colors"
-                    >
-                        ← トップに戻る
-                    </button>
+                <div className="flex items-center justify-center mb-4">
                     <h1 className="text-2xl font-bold">⚙️ 運営画面</h1>
-                    <div></div>
                 </div>
 
                 {/* Navigation */}
@@ -108,8 +128,69 @@ export default function AdminPage() {
                     <Link href="/admin/logs" className="nav-item">
                         ログ
                     </Link>
+                    <Link href="/admin/help" className="nav-item">
+                        使い方
+                    </Link>
                 </nav>
             </header>
+
+            {/* Current Rider Selection */}
+            <div className="card mb-8">
+                <h2 className="text-xl font-bold mb-4">🎤 現在パフォーマンス中の選手</h2>
+                <p className="text-[var(--text-muted)] text-sm mb-4">
+                    観客はここで選択された選手にのみ投票できます
+                </p>
+
+                {currentRider ? (
+                    <div className="flex items-center justify-between p-4 bg-[var(--surface-light)] rounded-xl mb-4">
+                        <div className="flex items-center gap-4">
+                            <div className="w-16 h-16 rounded-xl overflow-hidden bg-[var(--surface)] flex items-center justify-center">
+                                {currentRider.photo && currentRider.photo !== '/images/default-rider.png' ? (
+                                    <img
+                                        src={currentRider.photo}
+                                        alt={currentRider.name}
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <span className="text-3xl">🚴</span>
+                                )}
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-lg">{currentRider.name}</h3>
+                                <p className="text-[var(--text-muted)]">{currentRider.riderName}</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => selectCurrentRider(null)}
+                            disabled={selectingRider}
+                            className="btn btn-ghost"
+                        >
+                            解除
+                        </button>
+                    </div>
+                ) : (
+                    <div className="text-center p-4 bg-[var(--surface-light)] rounded-xl mb-4 text-[var(--text-muted)]">
+                        選手が選択されていません
+                    </div>
+                )}
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {riders.map((rider) => (
+                        <button
+                            key={rider.id}
+                            onClick={() => selectCurrentRider(rider.id)}
+                            disabled={selectingRider || rider.id === settings?.currentRiderId}
+                            className={`p-3 rounded-xl text-left transition-all ${rider.id === settings?.currentRiderId
+                                ? 'bg-[var(--primary)] text-white'
+                                : 'bg-[var(--surface)] hover:bg-[var(--surface-light)]'
+                                }`}
+                        >
+                            <div className="font-bold text-sm truncate">{rider.name}</div>
+                            <div className="text-xs opacity-70 truncate">{rider.riderName}</div>
+                        </button>
+                    ))}
+                </div>
+            </div>
 
             {/* Voting Control */}
             <div className="card mb-8">
@@ -202,8 +283,8 @@ export default function AdminPage() {
                                         </td>
                                         <td>
                                             <div className="flex items-center gap-3">
-                                                <span className="rider-number text-sm w-8 h-8">
-                                                    {result.rider.number}
+                                                <span className="text-sm text-[var(--text-muted)]">
+                                                    {result.rider.riderName}
                                                 </span>
                                                 <span className="font-bold">{result.rider.name}</span>
                                             </div>

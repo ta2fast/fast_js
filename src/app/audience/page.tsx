@@ -6,43 +6,57 @@ import { Rider, ContestSettings } from '@/types';
 import { hasVotedForRider, getVoteRecord } from '@/lib/deviceId';
 
 export default function AudiencePage() {
-    const [riders, setRiders] = useState<Rider[]>([]);
+    const [currentRider, setCurrentRider] = useState<Rider | null>(null);
     const [settings, setSettings] = useState<ContestSettings | null>(null);
-    const [votedRiders, setVotedRiders] = useState<Record<string, number>>({});
+    const [hasVoted, setHasVoted] = useState(false);
+    const [votedScore, setVotedScore] = useState<number | null>(null);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
 
     useEffect(() => {
         fetchData();
-        // 5秒ごとに更新
-        const interval = setInterval(fetchData, 5000);
+        // 3秒ごとに更新（運営が選手を切り替えた時に反映）
+        const interval = setInterval(fetchData, 3000);
         return () => clearInterval(interval);
     }, []);
 
-    useEffect(() => {
-        // 投票済みの選手を確認
-        const voted: Record<string, number> = {};
-        riders.forEach(rider => {
-            const record = getVoteRecord(rider.id);
-            if (record) {
-                voted[rider.id] = record.score;
-            }
-        });
-        setVotedRiders(voted);
-    }, [riders]);
-
     async function fetchData() {
         try {
-            const [ridersRes, settingsRes] = await Promise.all([
-                fetch('/api/riders'),
-                fetch('/api/admin/settings'),
-            ]);
-
-            const ridersData = await ridersRes.json();
+            const settingsRes = await fetch('/api/admin/settings');
             const settingsData = await settingsRes.json();
 
-            if (ridersData.success) setRiders(ridersData.data);
-            if (settingsData.success) setSettings(settingsData.data);
+            if (settingsData.success) {
+                setSettings(settingsData.data);
+
+                // 現在の選手を取得
+                if (settingsData.data.currentRiderId) {
+                    const ridersRes = await fetch('/api/riders');
+                    const ridersData = await ridersRes.json();
+
+                    if (ridersData.success) {
+                        const rider = ridersData.data.find(
+                            (r: Rider) => r.id === settingsData.data.currentRiderId
+                        );
+                        setCurrentRider(rider || null);
+
+                        // 投票済みか確認
+                        if (rider) {
+                            const record = getVoteRecord(rider.id);
+                            if (record) {
+                                setHasVoted(true);
+                                setVotedScore(record.score);
+                            } else {
+                                setHasVoted(false);
+                                setVotedScore(null);
+                            }
+                        }
+                    }
+                } else {
+                    setCurrentRider(null);
+                    setHasVoted(false);
+                    setVotedScore(null);
+                }
+            }
         } catch (error) {
             console.error('Failed to fetch data:', error);
         } finally {
@@ -50,16 +64,9 @@ export default function AudiencePage() {
         }
     }
 
-    function handleRiderClick(riderId: string) {
-        if (!settings?.votingEnabled) {
-            alert('現在、投票は受け付けていません');
-            return;
-        }
-        if (votedRiders[riderId]) {
-            alert(`既に ${votedRiders[riderId]} 点を投票済みです`);
-            return;
-        }
-        router.push(`/audience/vote/${riderId}`);
+    function handleVote() {
+        if (!currentRider) return;
+        router.push(`/audience/vote/${currentRider.id}`);
     }
 
     if (loading) {
@@ -70,93 +77,111 @@ export default function AudiencePage() {
         );
     }
 
+    // 投票が開いていない場合
+    if (!settings?.votingEnabled) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center p-4">
+                <div className="card p-8 text-center max-w-md w-full animate-fadeIn">
+                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[var(--surface)] to-[var(--surface-light)] flex items-center justify-center mx-auto mb-6">
+                        <span className="text-5xl">⏳</span>
+                    </div>
+                    <h1 className="text-2xl font-bold mb-4">投票待機中</h1>
+                    <p className="text-[var(--text-muted)]">
+                        投票が始まるまでお待ちください
+                    </p>
+                    <div className="mt-6">
+                        <span className="badge badge-secondary">投票停止中</span>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // 現在の選手が設定されていない場合
+    if (!currentRider) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center p-4">
+                <div className="card p-8 text-center max-w-md w-full animate-fadeIn">
+                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] flex items-center justify-center mx-auto mb-6">
+                        <span className="text-5xl">🎤</span>
+                    </div>
+                    <h1 className="text-2xl font-bold mb-4">次の選手をお待ちください</h1>
+                    <p className="text-[var(--text-muted)]">
+                        運営が選手を選択すると<br />
+                        投票できるようになります
+                    </p>
+                    <div className="mt-6">
+                        <span className="badge badge-accent animate-pulse">準備中</span>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // 既に投票済みの場合
+    if (hasVoted) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center p-4">
+                <div className="card p-8 text-center max-w-md w-full animate-fadeIn">
+                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[var(--accent)] to-emerald-600 flex items-center justify-center mx-auto mb-6">
+                        <span className="text-5xl">✓</span>
+                    </div>
+                    <h2 className="text-2xl font-bold mb-4">投票完了！</h2>
+                    <p className="text-[var(--text-muted)] mb-4">
+                        <span className="text-[var(--foreground)] font-bold">{currentRider.name}</span>
+                        <br />に投票しました
+                    </p>
+                    <div className="flex justify-center gap-2 mb-6">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                            <span
+                                key={star}
+                                className={`text-3xl ${star <= (votedScore || 0) ? 'text-[var(--secondary)]' : 'text-[var(--surface-border)]'}`}
+                            >
+                                ★
+                            </span>
+                        ))}
+                    </div>
+                    <p className="text-sm text-[var(--text-muted)]">
+                        次の選手の投票開始をお待ちください
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    // 投票可能な状態
     return (
-        <div className="min-h-screen p-4 pb-24">
-            {/* Header */}
-            <header className="mb-6">
-                <h1 className="text-2xl font-bold text-center mb-2">🎉 観客投票</h1>
-                <p className="text-center text-[var(--text-muted)]">
-                    応援したい選手をタップして投票！
-                </p>
-            </header>
+        <div className="min-h-screen flex flex-col items-center justify-center p-4">
+            <div className="card p-8 text-center max-w-md w-full animate-fadeIn">
+                {/* Header */}
+                <div className="mb-6">
+                    <span className="badge badge-accent mb-4">投票受付中</span>
+                    <h1 className="text-xl font-bold mb-2">🎉 観客投票</h1>
+                </div>
 
-            {/* Voting Status */}
-            <div className="mb-6">
-                {settings?.votingEnabled ? (
-                    <div className="glass rounded-xl p-4 text-center">
-                        <span className="badge badge-accent">投票受付中</span>
-                        <p className="mt-2 text-sm text-[var(--text-muted)]">
-                            選手をタップして投票してください
-                        </p>
+                {/* Current Rider */}
+                <div className="mb-8">
+                    <div className="w-32 h-32 mx-auto mb-4 rounded-2xl overflow-hidden bg-[var(--surface-light)] flex items-center justify-center">
+                        {currentRider.photo && currentRider.photo !== '/images/default-rider.png' ? (
+                            <img
+                                src={currentRider.photo}
+                                alt={currentRider.name}
+                                className="w-full h-full object-cover"
+                            />
+                        ) : (
+                            <span className="text-5xl">🚴</span>
+                        )}
                     </div>
-                ) : (
-                    <div className="glass rounded-xl p-4 text-center">
-                        <span className="badge badge-danger">投票停止中</span>
-                        <p className="mt-2 text-sm text-[var(--text-muted)]">
-                            投票開始をお待ちください
-                        </p>
-                    </div>
-                )}
-            </div>
+                    <h2 className="text-2xl font-bold">{currentRider.name}</h2>
+                    <p className="text-[var(--text-muted)]">{currentRider.riderName}</p>
+                </div>
 
-            {/* Rider List */}
-            <div className="space-y-3">
-                {riders.length === 0 ? (
-                    <div className="text-center text-[var(--text-muted)] py-8">
-                        選手が登録されていません
-                    </div>
-                ) : (
-                    riders.map((rider, index) => (
-                        <div
-                            key={rider.id}
-                            onClick={() => handleRiderClick(rider.id)}
-                            className={`rider-card animate-slideIn ${votedRiders[rider.id] ? 'voted' : ''}`}
-                            style={{ animationDelay: `${index * 0.05}s` }}
-                        >
-                            {/* Photo */}
-                            <div className="rider-photo flex items-center justify-center text-2xl bg-[var(--surface-light)]">
-                                {rider.photo && rider.photo !== '/images/default-rider.png' ? (
-                                    <img
-                                        src={rider.photo}
-                                        alt={rider.name}
-                                        className="w-full h-full object-cover rounded-xl"
-                                    />
-                                ) : (
-                                    '🏍️'
-                                )}
-                            </div>
-
-                            {/* Info */}
-                            <div className="flex-1">
-                                <h3 className="font-bold text-lg">{rider.name}</h3>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <span className="rider-number text-sm w-8 h-8">
-                                        {rider.number}
-                                    </span>
-                                    {votedRiders[rider.id] && (
-                                        <span className="badge badge-accent">
-                                            {votedRiders[rider.id]}点投票済み ✓
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Arrow */}
-                            {!votedRiders[rider.id] && settings?.votingEnabled && (
-                                <div className="text-[var(--primary)] text-2xl">→</div>
-                            )}
-                        </div>
-                    ))
-                )}
-            </div>
-
-            {/* Back Button */}
-            <div className="fixed bottom-0 left-0 right-0 p-4 glass">
+                {/* Vote Button */}
                 <button
-                    onClick={() => router.push('/')}
-                    className="btn btn-ghost w-full"
+                    onClick={handleVote}
+                    className="btn btn-secondary w-full text-lg py-4"
                 >
-                    ← トップに戻る
+                    この選手に投票する →
                 </button>
             </div>
         </div>

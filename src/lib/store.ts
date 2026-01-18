@@ -320,8 +320,8 @@ export async function exportToCSV(): Promise<{
 
     // Riders CSV
     const ridersCSV = [
-        'ID,名前,背番号,写真URL,登録日時',
-        ...riders.map(r => `${r.id},"${r.name}",${r.number},"${r.photo}",${r.createdAt}`)
+        'ID,名前,ライダーネーム,写真URL,登録日時',
+        ...riders.map(r => `${r.id},"${r.name}","${r.riderName}","${r.photo}",${r.createdAt}`)
     ].join('\n');
 
     // Judge Scores CSV
@@ -361,9 +361,9 @@ export async function exportToCSV(): Promise<{
     }).sort((a, b) => b.total - a.total);
 
     const resultsCSV = [
-        '順位,選手ID,選手名,背番号,ジャッジ平均点,観客点,投票数,総合点',
+        '順位,選手ID,選手名,ライダーネーム,ジャッジ平均点,観客点,投票数,総合点',
         ...resultsData.map((r, i) =>
-            `${i + 1},${r.rider.id},"${r.rider.name}",${r.rider.number},${r.judgeAvg.toFixed(2)},${r.audienceScore.toFixed(2)},${r.voteCount},${r.total.toFixed(2)}`
+            `${i + 1},${r.rider.id},"${r.rider.name}","${r.rider.riderName}",${r.judgeAvg.toFixed(2)},${r.audienceScore.toFixed(2)},${r.voteCount},${r.total.toFixed(2)}`
         )
     ].join('\n');
 
