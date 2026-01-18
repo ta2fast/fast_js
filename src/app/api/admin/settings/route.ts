@@ -32,3 +32,20 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
         );
     }
 }
+
+// PUT /api/admin/settings - 設定を更新
+export async function PUT(request: NextRequest): Promise<NextResponse<ApiResponse<ContestSettings>>> {
+    try {
+        const updates = await request.json();
+        console.log('PUT /api/admin/settings updates:', updates);
+        const settings = await updateSettings(updates);
+        console.log('Updated settings:', settings);
+        return NextResponse.json({ success: true, data: settings });
+    } catch (error) {
+        console.error('PUT error:', error);
+        return NextResponse.json(
+            { success: false, error: (error as Error).message },
+            { status: 500 }
+        );
+    }
+}

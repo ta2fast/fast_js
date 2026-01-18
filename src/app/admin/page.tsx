@@ -66,6 +66,7 @@ export default function AdminPage() {
     }
 
     async function selectCurrentRider(riderId: string | null) {
+        console.log('Selecting rider:', riderId);
         setSelectingRider(true);
         try {
             const res = await fetch('/api/admin/settings', {
@@ -77,6 +78,7 @@ export default function AdminPage() {
             });
 
             const data = await res.json();
+            console.log('API response:', data);
             if (data.success) {
                 setSettings(data.data);
             }
