@@ -68,6 +68,11 @@ export default function VotePage() {
             if (settingsData.success) {
                 setSettings(settingsData.data);
                 setCountdown(settingsData.data.votingDeadlineSeconds);
+
+                // 現在の選手と一致するかチェック
+                if (settingsData.data.currentRiderId !== riderId) {
+                    setError('現在、この選手への投票は受け付けていません');
+                }
             }
         } catch (err) {
             console.error('Failed to fetch data:', err);
@@ -79,6 +84,14 @@ export default function VotePage() {
 
     const handleSubmit = useCallback(async () => {
         if (!selectedScore || submitting || !rider || !deviceId) return;
+
+        console.log('Submitting vote:', { riderId: rider.id, score: selectedScore, deviceId, currentRiderId: settings?.currentRiderId });
+
+        // 現在の選手かチェック
+        if (settings?.currentRiderId !== rider.id) {
+            setError('現在、この選手への投票は受け付けていません');
+            return;
+        }
 
         setSubmitting(true);
         setError(null);

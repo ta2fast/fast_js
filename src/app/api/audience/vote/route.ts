@@ -49,6 +49,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
         const body = await request.json();
         const { riderId, score, deviceId } = body;
 
+        console.log('Received vote request:', { riderId, score, deviceId });
+
         if (!riderId || score === undefined || !deviceId) {
             return NextResponse.json(
                 { success: false, error: '選手ID、スコア、端末IDは必須です' },

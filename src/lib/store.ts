@@ -199,6 +199,11 @@ export async function submitAudienceVote(vote: Omit<AudienceVote, 'id' | 'timest
         throw new Error('現在、投票は受け付けていません');
     }
 
+    // 現在の選手かチェック
+    if (contestSettings.currentRiderId !== vote.riderId) {
+        throw new Error('現在、この選手への投票は受け付けていません');
+    }
+
     // 既に投票済みかチェック
     const existing = audienceVotes.find(v => v.deviceId === vote.deviceId && v.riderId === vote.riderId);
     if (existing) {
