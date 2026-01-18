@@ -12,6 +12,32 @@ export default function AdminPage() {
     const [toggling, setToggling] = useState(false);
     const [selectingRider, setSelectingRider] = useState(false);
 
+    // localStorageから設定を読み込む
+    const loadSettingsFromStorage = useCallback(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                const saved = localStorage.getItem('admin_settings');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    setSettings(parsed);
+                }
+            } catch (error) {
+                console.error('Failed to load settings from localStorage:', error);
+            }
+        }
+    }, []);
+
+    // 設定をlocalStorageに保存
+    const saveSettingsToStorage = useCallback((newSettings: ContestSettings) => {
+        if (typeof window !== 'undefined') {
+            try {
+                localStorage.setItem('admin_settings', JSON.stringify(newSettings));
+            } catch (error) {
+                console.error('Failed to save settings to localStorage:', error);
+            }
+        }
+    }, []);
+
     const fetchData = useCallback(async () => {
         try {
             const [scoresRes, settingsRes, ridersRes] = await Promise.all([
@@ -35,11 +61,20 @@ export default function AdminPage() {
     }, []);
 
     useEffect(() => {
+        // 初期ロード時にlocalStorageから設定を読み込む
+        loadSettingsFromStorage();
         fetchData();
         // 3秒ごとに更新
         const interval = setInterval(fetchData, 3000);
         return () => clearInterval(interval);
-    }, [fetchData]);
+    }, [fetchData, loadSettingsFromStorage]);
+
+    // settingsが変わったときにlocalStorageに保存
+    useEffect(() => {
+        if (settings) {
+            saveSettingsToStorage(settings);
+        }
+    }, [settings, saveSettingsToStorage]);
 
     async function toggleVoting() {
         if (!settings || toggling) return;

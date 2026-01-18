@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Rider, ContestSettings } from '@/types';
 import { hasVotedForRider, getVoteRecord } from '@/lib/deviceId';
@@ -13,12 +13,47 @@ export default function AudiencePage() {
     const [loading, setLoading] = useState(true);
     const router = useRouter();
 
+    // localStorageから状態を読み込む
+    const loadStateFromStorage = useCallback(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                const saved = localStorage.getItem('audience_state');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    setCurrentRider(parsed.currentRider);
+                    setHasVoted(parsed.hasVoted);
+                    setVotedScore(parsed.votedScore);
+                }
+            } catch (error) {
+                console.error('Failed to load audience state from localStorage:', error);
+            }
+        }
+    }, []);
+
+    // 状態をlocalStorageに保存
+    const saveStateToStorage = useCallback((state: { currentRider: Rider | null; hasVoted: boolean; votedScore: number | null }) => {
+        if (typeof window !== 'undefined') {
+            try {
+                localStorage.setItem('audience_state', JSON.stringify(state));
+            } catch (error) {
+                console.error('Failed to save audience state to localStorage:', error);
+            }
+        }
+    }, []);
+
     useEffect(() => {
+        // 初期ロード時にlocalStorageから状態を読み込む
+        loadStateFromStorage();
         fetchData();
         // 3秒ごとに更新（運営が選手を切り替えた時に反映）
         const interval = setInterval(fetchData, 3000);
         return () => clearInterval(interval);
-    }, []);
+    }, [fetchData, loadStateFromStorage]);
+
+    // 状態が変わったときにlocalStorageに保存
+    useEffect(() => {
+        saveStateToStorage({ currentRider, hasVoted, votedScore });
+    }, [currentRider, hasVoted, votedScore, saveStateToStorage]);
 
     async function fetchData() {
         try {
