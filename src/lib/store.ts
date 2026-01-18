@@ -79,12 +79,16 @@ export async function initializeStore(): Promise<void> {
 
 export async function getRiders(): Promise<Rider[]> {
     await initializeStore();
-    return riders;
+    return riders.map(rider => ({
+        ...rider,
+        riderName: rider.riderName || rider.name, // 既存データ対応
+    }));
 }
 
 export async function getRider(id: string): Promise<Rider | undefined> {
     await initializeStore();
-    return riders.find(r => r.id === id);
+    const rider = riders.find(r => r.id === id);
+    return rider ? { ...rider, riderName: rider.riderName || rider.name } : undefined;
 }
 
 export async function createRider(rider: Omit<Rider, 'id' | 'createdAt'>): Promise<Rider> {

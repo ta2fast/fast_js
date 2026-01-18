@@ -34,8 +34,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
 
         const rider = await createRider({
             name,
-            // number ではなく、新しい項目名に合わせてください
-            riderName: number,
+            riderName: name,
+            number,
             photo: photo || '/images/default-rider.png',
         });
 
