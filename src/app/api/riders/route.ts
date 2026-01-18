@@ -34,7 +34,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
 
         const rider = await createRider({
             name,
-            number: parseInt(number, 10),
+            // number ではなく、新しい項目名に合わせてください
+            riderName: number,
             photo: photo || '/images/default-rider.png',
         });
 
