@@ -12,32 +12,6 @@ export default function AdminPage() {
     const [toggling, setToggling] = useState(false);
     const [selectingRider, setSelectingRider] = useState(false);
 
-    // localStorageから設定を読み込む
-    const loadSettingsFromStorage = useCallback(() => {
-        if (typeof window !== 'undefined') {
-            try {
-                const saved = localStorage.getItem('admin_settings');
-                if (saved) {
-                    const parsed = JSON.parse(saved);
-                    setSettings(parsed);
-                }
-            } catch (error) {
-                console.error('Failed to load settings from localStorage:', error);
-            }
-        }
-    }, []);
-
-    // 設定をlocalStorageに保存
-    const saveSettingsToStorage = useCallback((newSettings: ContestSettings) => {
-        if (typeof window !== 'undefined') {
-            try {
-                localStorage.setItem('admin_settings', JSON.stringify(newSettings));
-            } catch (error) {
-                console.error('Failed to save settings to localStorage:', error);
-            }
-        }
-    }, []);
-
     const fetchData = useCallback(async () => {
         try {
             const [scoresRes, settingsRes, ridersRes] = await Promise.all([
@@ -51,7 +25,9 @@ export default function AdminPage() {
             const ridersData = await ridersRes.json();
 
             if (scoresData.success) setResults(scoresData.data);
-            if (settingsData.success) setSettings(settingsData.data);
+            if (settingsData.success) {
+                setSettings(settingsData.data);
+            }
             if (ridersData.success) setRiders(ridersData.data);
         } catch (error) {
             console.error('Failed to fetch data:', error);
@@ -61,20 +37,10 @@ export default function AdminPage() {
     }, []);
 
     useEffect(() => {
-        // 初期ロード時にlocalStorageから設定を読み込む
-        loadSettingsFromStorage();
         fetchData();
-        // 3秒ごとに更新
         const interval = setInterval(fetchData, 3000);
         return () => clearInterval(interval);
-    }, [fetchData, loadSettingsFromStorage]);
-
-    // settingsが変わったときにlocalStorageに保存
-    useEffect(() => {
-        if (settings) {
-            saveSettingsToStorage(settings);
-        }
-    }, [settings, saveSettingsToStorage]);
+    }, [fetchData]);
 
     async function toggleVoting() {
         if (!settings || toggling) return;
@@ -92,16 +58,18 @@ export default function AdminPage() {
             const data = await res.json();
             if (data.success) {
                 setSettings(data.data);
+            } else {
+                alert(`保存に失敗しました: ${data.error}`);
             }
         } catch (error) {
             console.error('Failed to toggle voting:', error);
+            alert('通信エラーが発生しました');
         } finally {
             setToggling(false);
         }
     }
 
     async function selectCurrentRider(riderId: string | null) {
-        console.log('Selecting rider:', riderId);
         setSelectingRider(true);
         try {
             const res = await fetch('/api/admin/settings', {
@@ -113,25 +81,27 @@ export default function AdminPage() {
             });
 
             const data = await res.json();
-            console.log('API response:', data);
             if (data.success) {
                 setSettings(data.data);
+            } else {
+                alert(`選手選択に失敗しました: ${data.error}`);
             }
         } catch (error) {
             console.error('Failed to select rider:', error);
+            alert('通信エラーが発生しました');
         } finally {
             setSelectingRider(false);
         }
     }
 
-    function getRankClass(rank: number): string {
+    const getRankClass = (rank: number) => {
         switch (rank) {
             case 1: return 'rank-1';
             case 2: return 'rank-2';
             case 3: return 'rank-3';
             default: return 'rank-other';
         }
-    }
+    };
 
     const currentRider = riders.find(r => r.id === settings?.currentRiderId);
 
@@ -145,216 +115,156 @@ export default function AdminPage() {
 
     return (
         <div className="min-h-screen p-4 md:p-8">
-            {/* Header */}
             <header className="mb-8">
                 <div className="flex items-center justify-center mb-4">
                     <h1 className="text-2xl font-bold">⚙️ 運営画面</h1>
                 </div>
 
-                {/* Navigation */}
                 <nav className="nav justify-center flex-wrap">
-                    <Link href="/admin" className="nav-item active">
-                        ダッシュボード
-                    </Link>
-                    <Link href="/admin/riders" className="nav-item">
-                        選手管理
-                    </Link>
-                    <Link href="/admin/settings" className="nav-item">
-                        大会設定
-                    </Link>
-                    <Link href="/admin/logs" className="nav-item">
-                        ログ
-                    </Link>
-                    <Link href="/admin/help" className="nav-item">
-                        使い方
-                    </Link>
+                    <Link href="/admin" className="nav-item active">ダッシュボード</Link>
+                    <Link href="/admin/riders" className="nav-item">選手管理</Link>
+                    <Link href="/admin/settings" className="nav-item">大会設定</Link>
+                    <Link href="/admin/logs" className="nav-item">ログ</Link>
                 </nav>
             </header>
 
-            {/* Current Rider Selection */}
-            <div className="card mb-8">
-                <h2 className="text-xl font-bold mb-4">🎤 現在パフォーマンス中の選手</h2>
-                <p className="text-[var(--text-muted)] text-sm mb-4">
-                    観客はここで選択された選手にのみ投票できます
-                </p>
+            {/* Current Rider & Voting Control Card (Integrated) */}
+            <div className="card mb-8 border-l-4 border-[var(--primary)]">
+                <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+                    🎤 パフォーマンス進行管理
+                    {settings?.votingEnabled && (
+                        <span className="badge badge-accent animate-pulse">投票受付中</span>
+                    )}
+                </h2>
 
-                {currentRider ? (
-                    <div className="flex items-center justify-between p-4 bg-[var(--surface-light)] rounded-xl mb-4">
-                        <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-xl overflow-hidden bg-[var(--surface)] flex items-center justify-center">
-                                {currentRider.photo && currentRider.photo !== '/images/default-rider.png' ? (
-                                    <img
-                                        src={currentRider.photo}
-                                        alt={currentRider.name}
-                                        className="w-full h-full object-cover"
-                                    />
-                                ) : (
-                                    <span className="text-3xl">🚴</span>
-                                )}
+                <div className="bg-[var(--surface-light)] rounded-2xl p-6 mb-8 shadow-inner">
+                    {currentRider ? (
+                        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                            <div className="flex items-center gap-6">
+                                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)] flex items-center justify-center shadow-lg text-white font-black">
+                                    <span className="text-4xl">{currentRider.displayOrder}</span>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-[var(--text-muted)] mb-1">現在の選手</p>
+                                    <h3 className="font-bold text-2xl">{currentRider.riderName}</h3>
+                                    <p className="text-sm opacity-70">{currentRider.name}</p>
+                                </div>
                             </div>
-                            <div>
-                                <h3 className="font-bold text-lg">{currentRider.name}</h3>
-                                <p className="text-[var(--text-muted)]">{currentRider.riderName}</p>
+
+                            <div className="flex gap-4 w-full md:w-auto">
+                                <button
+                                    onClick={toggleVoting}
+                                    disabled={toggling}
+                                    className={`btn flex-1 md:flex-none text-lg py-4 px-10 shadow-lg transition-all active:scale-95 ${settings?.votingEnabled ? 'btn-danger' : 'btn-accent'
+                                        }`}
+                                >
+                                    {toggling ? '...' : (settings?.votingEnabled ? '🛑 投票を終了' : '🚀 投票を開始')}
+                                </button>
+                                <button
+                                    onClick={() => selectCurrentRider(null)}
+                                    disabled={selectingRider || settings?.votingEnabled}
+                                    className="btn btn-ghost"
+                                    title="選手選択を解除"
+                                >
+                                    解除
+                                </button>
                             </div>
                         </div>
-                        <button
-                            onClick={() => selectCurrentRider(null)}
-                            disabled={selectingRider}
-                            className="btn btn-ghost"
-                        >
-                            解除
-                        </button>
-                    </div>
-                ) : (
-                    <div className="text-center p-4 bg-[var(--surface-light)] rounded-xl mb-4 text-[var(--text-muted)]">
-                        選手が選択されていません
-                    </div>
-                )}
+                    ) : (
+                        <div className="text-center py-8 text-[var(--text-muted)]">
+                            <p className="text-lg">選手が選択されていません</p>
+                            <p className="text-sm">下のリストから選手を選択してください</p>
+                        </div>
+                    )}
+                </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
                     {riders.map((rider) => (
                         <button
                             key={rider.id}
                             onClick={() => selectCurrentRider(rider.id)}
-                            disabled={selectingRider || rider.id === settings?.currentRiderId}
-                            className={`p-3 rounded-xl text-left transition-all ${rider.id === settings?.currentRiderId
-                                ? 'bg-[var(--primary)] text-white'
-                                : 'bg-[var(--surface)] hover:bg-[var(--surface-light)]'
-                                }`}
+                            disabled={selectingRider || rider.id === settings?.currentRiderId || settings?.votingEnabled}
+                            className={`p-4 rounded-xl text-left transition-all border-2 ${rider.id === settings?.currentRiderId
+                                ? 'bg-[var(--primary)] border-[var(--primary)] text-white shadow-md'
+                                : 'bg-[var(--surface)] border-transparent hover:border-[var(--surface-border)] hover:bg-[var(--surface-light)]'
+                                } ${settings?.votingEnabled && rider.id !== settings?.currentRiderId ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
                         >
-                            <div className="font-bold text-sm truncate">{rider.name}</div>
-                            <div className="text-xs opacity-70 truncate">{rider.riderName}</div>
+                            <div className="flex items-center gap-2 mb-1">
+                                <span className="w-5 h-5 rounded-md bg-white/20 flex items-center justify-center text-[10px] font-bold">
+                                    {rider.displayOrder}
+                                </span>
+                                <div className="font-bold text-sm truncate">{rider.riderName}</div>
+                            </div>
+                            <div className="text-xs opacity-70 truncate ml-7">{rider.name}</div>
                         </button>
                     ))}
                 </div>
             </div>
 
-            {/* Voting Control */}
-            <div className="card mb-8">
-                <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                    <div>
-                        <h2 className="text-xl font-bold mb-2">投票制御</h2>
-                        <p className="text-[var(--text-muted)]">
-                            {settings?.votingEnabled
-                                ? '現在、観客投票を受け付けています'
-                                : '観客投票は停止中です'}
-                        </p>
-                    </div>
-                    <button
-                        onClick={toggleVoting}
-                        disabled={toggling}
-                        className={`btn text-lg py-3 px-8 ${settings?.votingEnabled ? 'btn-danger' : 'btn-accent'
-                            }`}
-                    >
-                        {toggling
-                            ? '処理中...'
-                            : settings?.votingEnabled
-                                ? '投票を停止'
-                                : '投票を開始'}
-                    </button>
-                </div>
-            </div>
-
-            {/* Stats */}
+            {/* Quick Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                <div className="card text-center">
-                    <p className="text-3xl font-bold text-[var(--primary)]">{results.length}</p>
-                    <p className="text-sm text-[var(--text-muted)]">選手数</p>
+                <div className="card text-center p-6">
+                    <p className="text-4xl font-black text-[var(--primary)]">{results.length}</p>
+                    <p className="text-xs uppercase tracking-widest text-[var(--text-muted)]">Players</p>
                 </div>
-                <div className="card text-center">
-                    <p className="text-3xl font-bold text-[var(--secondary)]">
+                <div className="card text-center p-6">
+                    <p className="text-4xl font-black text-[var(--secondary)]">
                         {results.reduce((sum, r) => sum + r.audienceVotes.length, 0)}
                     </p>
-                    <p className="text-sm text-[var(--text-muted)]">総投票数</p>
+                    <p className="text-xs uppercase tracking-widest text-[var(--text-muted)]">Audience Votes</p>
                 </div>
-                <div className="card text-center">
-                    <p className="text-3xl font-bold text-[var(--accent)]">
+                <div className="card text-center p-6">
+                    <p className="text-4xl font-black text-[var(--accent)]">
                         {results.reduce((sum, r) => sum + r.judgeScores.length, 0)}
                     </p>
-                    <p className="text-sm text-[var(--text-muted)]">採点数</p>
+                    <p className="text-xs uppercase tracking-widest text-[var(--text-muted)]">Judge Scores</p>
                 </div>
-                <div className="card text-center">
-                    <span className={`badge ${settings?.votingEnabled ? 'badge-accent' : 'badge-danger'}`}>
-                        {settings?.votingEnabled ? '投票中' : '停止中'}
-                    </span>
-                    <p className="text-sm text-[var(--text-muted)] mt-2">投票状態</p>
+                <div className="card text-center p-6">
+                    <div className="flex flex-col items-center justify-center h-full">
+                        <span className={`badge mb-2 ${settings?.votingEnabled ? 'badge-accent' : 'badge-danger'}`}>
+                            {settings?.votingEnabled ? 'LIVE' : 'IDLE'}
+                        </span>
+                        <p className="text-xs uppercase tracking-widest text-[var(--text-muted)]">Status</p>
+                    </div>
                 </div>
             </div>
 
-            {/* Leaderboard */}
-            <div className="card">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold">🏆 リアルタイム順位</h2>
-                    <a
-                        href="/api/admin/export?type=results"
-                        className="btn btn-ghost text-sm"
-                        download
-                    >
-                        CSVダウンロード
-                    </a>
+            {/* Ranking Table */}
+            <div className="card shadow-xl overflow-hidden">
+                <div className="flex items-center justify-between p-6 bg-[var(--surface-light)] border-b border-[var(--surface-border)]">
+                    <h2 className="text-xl font-bold flex items-center gap-2">🏆 大会ランキング</h2>
+                    <a href="/api/admin/export?type=results" className="btn btn-ghost btn-sm" download>CSV Export</a>
                 </div>
 
-                {results.length === 0 ? (
-                    <div className="text-center text-[var(--text-muted)] py-8">
-                        選手が登録されていません
-                    </div>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <table className="table">
-                            <thead>
-                                <tr>
-                                    <th>順位</th>
-                                    <th>選手</th>
-                                    <th className="text-right">ジャッジ点</th>
-                                    <th className="text-right">観客点</th>
-                                    <th className="text-right">総合点</th>
+                <div className="overflow-x-auto">
+                    <table className="table w-full">
+                        <thead className="bg-[var(--surface)]">
+                            <tr>
+                                <th className="p-4 text-left">Rank</th>
+                                <th className="p-4 text-left">Rider</th>
+                                <th className="p-4 text-right">Judge Avg.</th>
+                                <th className="p-4 text-right">Audience Avg.</th>
+                                <th className="p-4 text-right">Total Score</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {results.map((result) => (
+                                <tr key={result.riderId} className="border-b border-[var(--surface-border)] hover:bg-[var(--surface-light)] transition-colors">
+                                    <td className="p-4"><span className={`rank ${getRankClass(result.rank)}`}>{result.rank}</span></td>
+                                    <td className="p-4">
+                                        <div className="font-bold">{result.rider.riderName}</div>
+                                        <div className="text-xs text-[var(--text-muted)]">{result.rider.name}</div>
+                                    </td>
+                                    <td className="p-4 text-right font-mono font-bold">{result.judgeAverage.toFixed(1)}</td>
+                                    <td className="p-4 text-right font-mono text-[var(--secondary)] font-bold">{result.audienceAverage.toFixed(1)}</td>
+                                    <td className="p-4 text-right">
+                                        <span className="text-xl font-black text-[var(--primary)]">{result.totalScore.toFixed(1)}</span>
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                {results.map((result) => (
-                                    <tr key={result.riderId} className="animate-fadeIn">
-                                        <td>
-                                            <span className={`rank ${getRankClass(result.rank)}`}>
-                                                {result.rank}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-sm text-[var(--text-muted)]">
-                                                    {result.rider.riderName}
-                                                </span>
-                                                <span className="font-bold">{result.rider.name}</span>
-                                            </div>
-                                        </td>
-                                        <td className="text-right">
-                                            <div>
-                                                <span className="font-bold">{result.judgeAverage.toFixed(1)}</span>
-                                                <span className="text-[var(--text-muted)] text-sm"> /100</span>
-                                            </div>
-                                            <div className="text-xs text-[var(--text-muted)]">
-                                                ({result.judgeScores.length}件)
-                                            </div>
-                                        </td>
-                                        <td className="text-right">
-                                            <div>
-                                                <span className="font-bold">{result.audienceWeightedScore.toFixed(1)}</span>
-                                                <span className="text-[var(--text-muted)] text-sm"> /{settings?.audienceMaxScore! * settings?.audienceWeight!}</span>
-                                            </div>
-                                            <div className="text-xs text-[var(--text-muted)]">
-                                                平均{result.audienceAverage.toFixed(1)} ({result.audienceVotes.length}票)
-                                            </div>
-                                        </td>
-                                        <td className="text-right">
-                                            <span className="text-xl font-bold bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] bg-clip-text text-transparent">
-                                                {result.totalScore.toFixed(1)}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );

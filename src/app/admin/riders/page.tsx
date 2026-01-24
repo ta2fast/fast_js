@@ -10,8 +10,9 @@ export default function RidersManagementPage() {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editingRider, setEditingRider] = useState<Rider | null>(null);
-    const [formData, setFormData] = useState({ name: '', riderName: '', number: '', photo: '' });
+    const [formData, setFormData] = useState({ name: '', riderName: '' });
     const [saving, setSaving] = useState(false);
+    const [reordering, setReordering] = useState(false);
     const router = useRouter();
 
     const fetchRiders = useCallback(async () => {
@@ -32,7 +33,7 @@ export default function RidersManagementPage() {
 
     function openAddModal() {
         setEditingRider(null);
-        setFormData({ name: '', riderName: '', number: '', photo: '' });
+        setFormData({ name: '', riderName: '' });
         setShowModal(true);
     }
 
@@ -40,22 +41,14 @@ export default function RidersManagementPage() {
         setEditingRider(rider);
         setFormData({
             name: rider.name,
-            riderName: rider.riderName || '',
-            number: rider.number.toString(),
-            photo: rider.photo || ''
+            riderName: rider.riderName || ''
         });
         setShowModal(true);
     }
 
     async function handleSave() {
-        if (!formData.name || !formData.riderName || !formData.number) {
-            alert('名前、ライダーネーム、背番号は必須です');
-            return;
-        }
-
-        const numberValue = parseInt(formData.number);
-        if (isNaN(numberValue) || numberValue <= 0) {
-            alert('背番号は正の整数で入力してください');
+        if (!formData.name || !formData.riderName) {
+            alert('名前、ライダーネームは必須です');
             return;
         }
 
@@ -63,8 +56,8 @@ export default function RidersManagementPage() {
         try {
             const method = editingRider ? 'PUT' : 'POST';
             const body = editingRider
-                ? { id: editingRider.id, ...formData, number: numberValue }
-                : { ...formData, number: numberValue };
+                ? { id: editingRider.id, ...formData }
+                : { ...formData };
 
             console.log('Saving rider:', { method, body });
 
@@ -107,6 +100,48 @@ export default function RidersManagementPage() {
         } catch (error) {
             console.error('Failed to delete rider:', error);
             alert('削除に失敗しました');
+        }
+    }
+
+    async function moveRider(riderId: string, direction: 'up' | 'down') {
+        const currentIndex = riders.findIndex(r => r.id === riderId);
+        if (currentIndex === -1) return;
+
+        const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+        if (newIndex < 0 || newIndex >= riders.length) return;
+
+        setReordering(true);
+        try {
+            // 入れ替え対象の2つのライダーの順番を交換
+            const currentRider = riders[currentIndex];
+            const swapRider = riders[newIndex];
+
+            // 両方のライダーのdisplayOrderを更新
+            await Promise.all([
+                fetch('/api/riders', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: currentRider.id,
+                        displayOrder: swapRider.displayOrder
+                    }),
+                }),
+                fetch('/api/riders', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: swapRider.id,
+                        displayOrder: currentRider.displayOrder
+                    }),
+                }),
+            ]);
+
+            fetchRiders();
+        } catch (error) {
+            console.error('Failed to reorder riders:', error);
+            alert('順番の変更に失敗しました');
+        } finally {
+            setReordering(false);
         }
     }
 
@@ -160,33 +195,45 @@ export default function RidersManagementPage() {
                         選手が登録されていません
                     </div>
                 ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                         {riders.map((rider, index) => (
                             <div
                                 key={rider.id}
-                                className="flex items-center justify-between p-4 bg-[var(--surface-light)] rounded-xl animate-slideIn"
+                                className="flex items-center justify-between p-3 bg-[var(--surface-light)] rounded-xl animate-slideIn"
                                 style={{ animationDelay: `${index * 0.05}s` }}
                             >
-                                <div className="flex items-center gap-4">
-                                    <div className="rider-photo w-14 h-14 flex items-center justify-center text-xl">
-                                        {rider.photo && rider.photo !== '/images/default-rider.png' ? (
-                                            <img
-                                                src={rider.photo}
-                                                alt={rider.name}
-                                                className="w-full h-full object-cover rounded-xl"
-                                            />
-                                        ) : (
-                                            '🏍️'
-                                        )}
+                                <div className="flex items-center gap-3">
+                                    {/* 出走順表示 */}
+                                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)] flex items-center justify-center text-lg font-bold text-white">
+                                        {index + 1}
                                     </div>
+                                    {/* 選手情報 */}
                                     <div>
                                         <h3 className="font-bold">{rider.name}</h3>
                                         <span className="text-sm text-[var(--text-muted)]">
-                                            {rider.riderName} (#{rider.number})
+                                            {rider.riderName}
                                         </span>
                                     </div>
                                 </div>
-                                <div className="flex gap-2">
+                                <div className="flex items-center gap-1">
+                                    {/* 並び替えボタン */}
+                                    <button
+                                        onClick={() => moveRider(rider.id, 'up')}
+                                        disabled={index === 0 || reordering}
+                                        className="btn btn-ghost text-sm px-2 py-1 disabled:opacity-30"
+                                        title="上へ移動"
+                                    >
+                                        ↑
+                                    </button>
+                                    <button
+                                        onClick={() => moveRider(rider.id, 'down')}
+                                        disabled={index === riders.length - 1 || reordering}
+                                        className="btn btn-ghost text-sm px-2 py-1 disabled:opacity-30"
+                                        title="下へ移動"
+                                    >
+                                        ↓
+                                    </button>
+                                    {/* 編集・削除ボタン */}
                                     <button
                                         onClick={() => openEditModal(rider)}
                                         className="btn btn-ghost text-sm"
@@ -238,33 +285,6 @@ export default function RidersManagementPage() {
                                     onChange={e => setFormData(prev => ({ ...prev, riderName: e.target.value }))}
                                     className="input"
                                     placeholder="TARO"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm text-[var(--text-muted)] mb-2">
-                                    背番号 *
-                                </label>
-                                <input
-                                    type="number"
-                                    value={formData.number}
-                                    onChange={e => setFormData(prev => ({ ...prev, number: e.target.value }))}
-                                    className="input"
-                                    placeholder="1"
-                                    min="1"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm text-[var(--text-muted)] mb-2">
-                                    写真URL（任意）
-                                </label>
-                                <input
-                                    type="text"
-                                    value={formData.photo}
-                                    onChange={e => setFormData(prev => ({ ...prev, photo: e.target.value }))}
-                                    className="input"
-                                    placeholder="https://..."
                                 />
                             </div>
                         </div>

@@ -216,20 +216,12 @@ export default function JudgeScorePage() {
             {/* Rider Info */}
             <div className="card mb-6 animate-fadeIn">
                 <div className="flex items-center gap-4">
-                    <div className="rider-photo w-16 h-16 flex items-center justify-center text-2xl">
-                        {rider.photo && rider.photo !== '/images/default-rider.png' ? (
-                            <img
-                                src={rider.photo}
-                                alt={rider.name}
-                                className="w-full h-full object-cover rounded-xl"
-                            />
-                        ) : (
-                            '🏍️'
-                        )}
+                    <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)] flex items-center justify-center text-2xl">
+                        🏍️
                     </div>
                     <div>
                         <h2 className="text-xl font-bold">{rider.name}</h2>
-                        <span className="rider-number text-sm">{rider.number}</span>
+                        <span className="text-sm text-[var(--text-muted)]">{rider.riderName}</span>
                     </div>
                 </div>
             </div>

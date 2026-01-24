@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import Link from 'next/link';
 import { Rider, ContestSettings } from '@/types';
-import { generateDeviceId, recordVote, hasVotedForRider, canModifyVote } from '@/lib/deviceId';
+import { generateDeviceId, recordVote, hasVotedForRider } from '@/lib/deviceId';
 
 export default function VotePage() {
     const router = useRouter();
@@ -18,77 +19,75 @@ export default function VotePage() {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [deviceId, setDeviceId] = useState<string>('');
-    const [countdown, setCountdown] = useState<number>(30);
 
+    const isMounted = useRef(true);
     useEffect(() => {
-        async function init() {
-            const id = await generateDeviceId();
-            setDeviceId(id);
+        return () => { isMounted.current = false; };
+    }, []);
 
-            // 既に投票済みかチェック
-            if (hasVotedForRider(riderId)) {
-                setSubmitted(true);
-            }
-        }
-        init();
-        fetchData();
-    }, [riderId]);
-
-    useEffect(() => {
-        // カウントダウンタイマー
-        if (settings?.votingEnabled && countdown > 0) {
-            const timer = setInterval(() => {
-                setCountdown(prev => {
-                    if (prev <= 1) {
-                        clearInterval(timer);
-                        return 0;
-                    }
-                    return prev - 1;
-                });
-            }, 1000);
-            return () => clearInterval(timer);
-        }
-    }, [settings?.votingEnabled, countdown]);
-
-    async function fetchData() {
+    const fetchData = useCallback(async () => {
         try {
             const [ridersRes, settingsRes] = await Promise.all([
-                fetch('/api/riders'),
-                fetch('/api/admin/settings'),
+                fetch('/api/riders', { cache: 'no-store' }),
+                fetch('/api/admin/settings', { cache: 'no-store' }),
             ]);
 
             const ridersData = await ridersRes.json();
             const settingsData = await settingsRes.json();
 
-            if (ridersData.success) {
-                const found = ridersData.data.find((r: Rider) => r.id === riderId);
-                setRider(found || null);
-            }
+            if (!isMounted.current) return;
 
             if (settingsData.success) {
-                setSettings(settingsData.data);
-                setCountdown(settingsData.data.votingDeadlineSeconds);
+                const s = settingsData.data;
+                setSettings(s);
 
-                // 現在の選手と一致するかチェック
-                if (settingsData.data.currentRiderId !== riderId) {
-                    setError('現在、この選手への投票は受け付けていません');
+                // 【重要】別の選手に切り替わった場合、または投票が無効になった場合はトップへ戻る
+                if (s.currentRiderId !== riderId || !s.votingEnabled) {
+                    console.log('--- VOTE PAGE REDIRECT TRIGGERED --- Context changed');
+                    router.replace('/audience');
+                    return;
+                }
+            }
+
+            if (ridersData.success) {
+                const found = ridersData.data.find((r: Rider) => r.id === riderId);
+                if (found) {
+                    setRider(found);
+                } else if (isMounted.current) {
+                    setError('選手が見つかりません');
                 }
             }
         } catch (err) {
-            console.error('Failed to fetch data:', err);
-            setError('データの取得に失敗しました');
+            console.error('Fetch error:', err);
         } finally {
-            setLoading(false);
+            if (isMounted.current) setLoading(false);
         }
-    }
+    }, [riderId, router]);
 
-    const handleSubmit = useCallback(async () => {
+    useEffect(() => {
+        async function init() {
+            const id = await generateDeviceId();
+            if (isMounted.current) {
+                setDeviceId(id);
+                if (hasVotedForRider(riderId)) {
+                    setSubmitted(true);
+                }
+            }
+            fetchData();
+        }
+        init();
+
+        const poll = setInterval(fetchData, 3000);
+        return () => clearInterval(poll);
+    }, [riderId, fetchData]);
+
+    const handleSubmit = useCallback(async (e: React.FormEvent) => {
+        if (e && e.preventDefault) e.preventDefault();
+
         if (!selectedScore || submitting || !rider || !deviceId) return;
 
-        console.log('Submitting vote:', { riderId: rider.id, score: selectedScore, deviceId, currentRiderId: settings?.currentRiderId });
-
-        // 現在の選手かチェック
-        if (settings?.currentRiderId !== rider.id) {
+        // セキュリティチェック
+        if (settings?.currentRiderId !== rider.id || !settings?.votingEnabled) {
             setError('現在、この選手への投票は受け付けていません');
             return;
         }
@@ -109,6 +108,8 @@ export default function VotePage() {
 
             const data = await res.json();
 
+            if (!isMounted.current) return;
+
             if (data.success) {
                 recordVote(rider.id, selectedScore);
                 setSubmitted(true);
@@ -116,175 +117,83 @@ export default function VotePage() {
                 setError(data.error || '投票に失敗しました');
             }
         } catch (err) {
-            console.error('Failed to submit vote:', err);
-            setError('投票に失敗しました');
+            console.error('Submit error:', err);
+            if (isMounted.current) setError('通信エラーが発生しました');
         } finally {
-            setSubmitting(false);
+            if (isMounted.current) setSubmitting(false);
         }
-    }, [selectedScore, submitting, rider, deviceId]);
+    }, [selectedScore, submitting, rider, deviceId, settings]);
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="text-xl text-[var(--text-muted)]">読み込み中...</div>
+            <div className="min-h-screen flex items-center justify-center bg-[var(--background)]">
+                <div className="text-xl text-[var(--text-muted)] animate-pulse">読み込み中...</div>
             </div>
         );
     }
 
-    if (!rider) {
-        return (
-            <div className="min-h-screen flex flex-col items-center justify-center p-4">
-                <p className="text-xl mb-4">選手が見つかりません</p>
-                <button onClick={() => router.push('/audience')} className="btn btn-primary">
-                    戻る
-                </button>
-            </div>
-        );
-    }
-
-    // 投票完了画面
     if (submitted) {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center p-4 animate-fadeIn">
-                <div className="card p-8 text-center max-w-md w-full">
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[var(--accent)] to-emerald-600 flex items-center justify-center mx-auto mb-6">
-                        <span className="text-4xl">✓</span>
+            <div className="min-h-screen flex flex-col p-6 items-center justify-center bg-[var(--background)] text-center">
+                <div className="card p-10 max-w-md w-full animate-fadeIn shadow-2xl border-t-4 border-[var(--accent)] bg-[var(--surface)]">
+                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[var(--accent)] to-emerald-600 flex items-center justify-center mx-auto mb-8 shadow-lg border-2 border-emerald-400/20">
+                        <span className="text-6xl text-white font-bold">✓</span>
                     </div>
-                    <h2 className="text-2xl font-bold mb-4">投票完了！</h2>
-                    <p className="text-[var(--text-muted)] mb-6">
-                        <span className="text-[var(--foreground)] font-bold">{rider.name}</span>
-                        <br />
-                        に投票しました
+                    <h2 className="text-3xl font-black mb-4 text-white">投票完了！</h2>
+                    <p className="text-[var(--text-muted)] mb-8">
+                        <span className="text-[var(--foreground)] font-bold text-lg">{rider?.riderName}</span>
+                        <br />に投票しました
                     </p>
-                    <div className="flex justify-center gap-2 mb-6">
+                    <div className="flex justify-center gap-2 mb-10 bg-[var(--surface-light)] py-4 rounded-xl shadow-inner">
                         {[1, 2, 3, 4, 5].map((star) => (
-                            <span
-                                key={star}
-                                className={`text-3xl ${star <= selectedScore ? 'text-[var(--secondary)]' : 'text-[var(--surface-border)]'}`}
-                            >
-                                ★
-                            </span>
+                            <span key={star} className={`text-4xl ${star <= selectedScore ? 'text-[var(--secondary)]' : 'text-gray-700'}`}>★</span>
                         ))}
                     </div>
-                    <button
-                        onClick={() => router.push('/audience')}
-                        className="btn btn-primary w-full"
-                    >
-                        戻る
-                    </button>
-                </div>
-            </div>
-        );
-    }
-
-    // 投票停止中
-    if (!settings?.votingEnabled) {
-        return (
-            <div className="min-h-screen flex flex-col items-center justify-center p-4">
-                <div className="card p-8 text-center max-w-md w-full">
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[var(--danger)] to-red-600 flex items-center justify-center mx-auto mb-6">
-                        <span className="text-4xl">⏸️</span>
-                    </div>
-                    <h2 className="text-2xl font-bold mb-4">投票停止中</h2>
-                    <p className="text-[var(--text-muted)] mb-6">
-                        現在、投票は受け付けていません。<br />
-                        投票開始をお待ちください。
-                    </p>
-                    <button
-                        onClick={() => router.push('/audience')}
-                        className="btn btn-ghost w-full"
-                    >
-                        戻る
-                    </button>
+                    <Link href="/audience" className="btn btn-primary w-full py-4 text-lg"> 一覧へ戻る </Link>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen flex flex-col p-4">
-            {/* Header */}
-            <header className="mb-6">
-                <button
-                    onClick={() => router.push('/audience')}
-                    className="text-[var(--text-muted)] hover:text-[var(--foreground)] transition-colors mb-4"
-                >
-                    ← 戻る
-                </button>
-
-                {/* Timer */}
-                <div className="text-center mb-4">
-                    <p className="text-sm text-[var(--text-muted)]">投票締切まで</p>
-                    <p className={`timer ${countdown <= 10 ? 'warning' : ''}`}>
-                        {countdown}秒
-                    </p>
-                </div>
+        <div className="min-h-screen flex flex-col p-6 items-center justify-start bg-[var(--background)]">
+            <header className="mb-6 flex justify-between items-start w-full max-w-md">
+                <Link href="/audience" className="text-[var(--text-muted)] hover:text-[var(--foreground)] transition-colors p-2 no-underline"> ← 戻る </Link>
+                <button type="button" onClick={() => window.location.reload()} className="p-2 rounded-full bg-[var(--surface-light)] hover:bg-[var(--surface-border)] transition-colors shadow-sm"> <span className="text-xl">🔄</span> </button>
             </header>
 
-            {/* Rider Info */}
-            <div className="card mb-6 animate-fadeIn">
-                <div className="flex items-center gap-4">
-                    <div className="rider-photo w-20 h-20 flex items-center justify-center text-3xl">
-                        {rider.photo && rider.photo !== '/images/default-rider.png' ? (
-                            <img
-                                src={rider.photo}
-                                alt={rider.name}
-                                className="w-full h-full object-cover rounded-xl"
-                            />
-                        ) : (
-                            '🏍️'
-                        )}
-                    </div>
-                    <div>
-                        <h2 className="text-2xl font-bold">{rider.name}</h2>
-                        <span className="text-[var(--text-muted)]">{rider.riderName}</span>
-                    </div>
-                </div>
-            </div>
-
-            {/* Star Rating */}
-            <div className="flex-1 flex flex-col items-center justify-center">
-                <p className="text-lg mb-6 text-[var(--text-muted)]">盛り上がり度を評価！</p>
-
-                <div className="flex justify-center gap-2 mb-8">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                            key={star}
-                            onClick={() => setSelectedScore(star)}
-                            className={`star-btn ${star <= selectedScore ? 'active' : ''}`}
-                        >
-                            ★
-                        </button>
-                    ))}
+            <main className="w-full max-w-md flex flex-col animate-fadeIn">
+                <div className="card mb-8 p-8 text-center shadow-2xl border-t-4 border-[var(--primary)] bg-[var(--surface)]">
+                    <div className="w-20 h-20 mx-auto mb-4 rounded-3xl bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)] flex items-center justify-center shadow-lg"> <span className="text-4xl">🏍️</span> </div>
+                    <h2 className="text-2xl font-black text-white">{rider?.riderName}</h2>
+                    <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest">{rider?.name}</p>
                 </div>
 
-                {selectedScore > 0 && (
-                    <p className="text-2xl font-bold mb-4 animate-fadeIn">
-                        {selectedScore}点
-                    </p>
-                )}
+                <div className="card flex-1 flex flex-col items-center justify-center p-8 mb-8 bg-[var(--surface)] shadow-xl">
+                    <p className="text-lg mb-8 text-[var(--foreground)] font-bold">盛り上がり度を評価！</p>
+                    <div className="flex justify-center gap-2 mb-10 bg-[var(--surface-light)] p-5 rounded-3xl border border-[var(--surface-border)] shadow-inner w-full">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                                key={star}
+                                type="button"
+                                onClick={() => setSelectedScore(star)}
+                                className={`star-btn text-5xl transition-all hover:scale-125 ${star <= selectedScore ? 'active !text-[var(--secondary)]' : 'text-gray-600'}`}
+                            > ★ </button>
+                        ))}
+                    </div>
+                    {selectedScore > 0 && <p className="text-4xl font-black text-[var(--secondary)] animate-bounce">{selectedScore} <span className="text-lg">点</span></p>}
+                    {error && <p className="text-[var(--danger)] text-sm font-bold mt-4">{error}</p>}
+                </div>
 
-                {error && (
-                    <p className="text-[var(--danger)] text-center mb-4">{error}</p>
-                )}
-            </div>
-
-            {/* Submit Button */}
-            <div className="mt-auto">
                 <button
+                    type="button"
                     onClick={handleSubmit}
-                    disabled={!selectedScore || submitting || countdown === 0}
-                    className="btn btn-secondary w-full text-lg py-4"
+                    disabled={selectedScore === 0 || submitting}
+                    className="btn btn-secondary w-full text-2xl py-6 rounded-2xl shadow-2xl transition-all active:scale-95"
                 >
-                    {submitting ? '送信中...' : countdown === 0 ? '時間切れ' : '投票する'}
+                    {submitting ? '送信中...' : '投票を確定する'}
                 </button>
-
-                {settings.allowVoteModification && (
-                    <p className="text-center text-sm text-[var(--text-muted)] mt-2">
-                        ※ 投票後{settings.modificationWindowSeconds}秒以内なら変更可能
-                    </p>
-                )}
-            </div>
+            </main>
         </div>
     );
 }

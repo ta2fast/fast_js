@@ -6,6 +6,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSettings, updateSettings } from '@/lib/store';
 import { ApiResponse, ContestSettings } from '@/types';
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/admin/settings - 設定を取得
 export async function GET(): Promise<NextResponse<ApiResponse<ContestSettings>>> {
     try {
