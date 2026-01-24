@@ -5,6 +5,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { exportToCSV } from '@/lib/store';
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/admin/export - CSVエクスポート
 export async function GET(request: NextRequest): Promise<NextResponse> {
     try {
