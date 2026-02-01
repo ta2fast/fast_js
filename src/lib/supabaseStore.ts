@@ -677,3 +677,34 @@ export async function initializeStore(): Promise<void> {
     // No initialization needed for Supabase
     // Database is already initialized via SQL schema
 }
+
+// ==============================
+// Reset Data
+// ==============================
+export async function resetContestData(): Promise<void> {
+    try {
+        // 1. Delete scores, votes, and logs
+        const results = await Promise.all([
+            supabase.from('judge_scores').delete().neq('id', ''),
+            supabase.from('audience_votes').delete().neq('id', ''),
+            supabase.from('logs').delete().neq('id', ''),
+        ]);
+
+        const errors = results.filter(r => r.error).map(r => r.error);
+        if (errors.length > 0) {
+            console.error('Failed to reset some tables:', errors);
+            throw new Error('データの削除に失敗しました');
+        }
+
+        // 2. Reset settings (current rider and voting status)
+        await updateSettings({
+            currentRiderId: null,
+            votingEnabled: false,
+        });
+
+        await addLog('setting_change', 'All statistics and logs reset', {});
+    } catch (err) {
+        console.error('resetContestData error:', err);
+        throw err;
+    }
+}

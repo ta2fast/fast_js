@@ -44,4 +44,7 @@ export {
 
     // Initialize
     initializeStore,
+
+    // Reset
+    resetContestData,
 } from './supabaseStore';

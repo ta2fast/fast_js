@@ -410,6 +410,47 @@ export default function SettingsPage() {
                     </div>
                 </div>
             )}
+            {/* Danger Zone */}
+            <div className="mt-12 p-6 border-2 border-red-500/20 rounded-2xl bg-red-500/5">
+                <h2 className="text-xl font-bold text-red-500 mb-4 flex items-center gap-2">
+                    ⚠️ 危険な操作 (Danger Zone)
+                </h2>
+                <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div>
+                        <p className="font-bold text-red-700 dark:text-red-400">大会データの初期化</p>
+                        <p className="text-sm text-[var(--text-muted)]">
+                            すべてのジャッジ点、観客投票、およびログを削除します。この操作は取り消せません。
+                        </p>
+                    </div>
+                    <button
+                        onClick={async () => {
+                            if (!confirm('【警告】すべての大会データを削除します。本当によろしいですか？')) return;
+                            if (!confirm('最終確認：この操作は絶対に取り消せません。データをリセットしますか？')) return;
+
+                            setSaving(true);
+                            try {
+                                const res = await fetch('/api/admin/reset', { method: 'POST' });
+                                const data = await res.json();
+                                if (data.success) {
+                                    alert('初期化が完了しました');
+                                    router.push('/admin');
+                                } else {
+                                    alert(`初期化に失敗しました: ${data.error}`);
+                                }
+                            } catch (error) {
+                                console.error('Reset failed:', error);
+                                alert('エラーが発生しました');
+                            } finally {
+                                setSaving(false);
+                            }
+                        }}
+                        disabled={saving}
+                        className="btn btn-danger py-3 px-8 shadow-lg active:scale-95"
+                    >
+                        {saving ? '処理中...' : '大会を初期化する'}
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }
