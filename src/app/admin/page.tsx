@@ -120,10 +120,12 @@ export default function AdminPage() {
                     <h1 className="text-2xl font-bold">⚙️ 運営画面</h1>
                     <button
                         onClick={async () => {
-                            await fetch('/api/admin/auth', { method: 'DELETE' });
-                            window.location.href = '/admin/login';
+                            if (confirm('ログアウトしますか？')) {
+                                await fetch('/api/admin/auth', { method: 'DELETE' });
+                                window.location.href = '/admin/login';
+                            }
                         }}
-                        className="btn btn-ghost btn-sm text-red-500"
+                        className="btn btn-ghost btn-sm text-rose-500 hover:bg-rose-500/10"
                     >
                         ログアウト
                     </button>
