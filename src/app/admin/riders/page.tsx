@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Rider } from '@/types';
+import AdminHeader from '@/components/admin/AdminHeader';
 
 export default function RidersManagementPage() {
     const [riders, setRiders] = useState<Rider[]>([]);
@@ -156,39 +157,7 @@ export default function RidersManagementPage() {
     return (
         <div className="min-h-screen p-4 md:p-8">
             {/* Header */}
-            <header className="mb-8">
-                <div className="flex items-center justify-between mb-4">
-                    <h1 className="text-2xl font-bold">⚙️ 運営画面</h1>
-                    <button
-                        onClick={async () => {
-                            await fetch('/api/admin/auth', { method: 'DELETE' });
-                            window.location.href = '/admin/login';
-                        }}
-                        className="btn btn-ghost btn-sm text-red-500"
-                    >
-                        ログアウト
-                    </button>
-                </div>
-
-                {/* Navigation */}
-                <nav className="nav justify-center flex-wrap">
-                    <Link href="/admin" className="nav-item">
-                        ダッシュボード
-                    </Link>
-                    <Link href="/admin/riders" className="nav-item active">
-                        選手管理
-                    </Link>
-                    <Link href="/admin/settings" className="nav-item">
-                        大会設定
-                    </Link>
-                    <Link href="/admin/logs" className="nav-item">
-                        ログ
-                    </Link>
-                    <Link href="/admin/help" className="nav-item">
-                        使い方
-                    </Link>
-                </nav>
-            </header>
+            <AdminHeader />
 
             {/* Content */}
             <div className="card">

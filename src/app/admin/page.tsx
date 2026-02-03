@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { RiderResult, ContestSettings, Rider } from '@/types';
+import AdminHeader from '@/components/admin/AdminHeader';
 
 export default function AdminPage() {
     const [results, setResults] = useState<RiderResult[]>([]);
@@ -115,29 +116,7 @@ export default function AdminPage() {
 
     return (
         <div className="min-h-screen p-4 md:p-8">
-            <header className="mb-8">
-                <div className="flex items-center justify-between mb-4">
-                    <h1 className="text-2xl font-bold">⚙️ 運営画面</h1>
-                    <button
-                        onClick={async () => {
-                            if (confirm('ログアウトしますか？')) {
-                                await fetch('/api/admin/auth', { method: 'DELETE' });
-                                window.location.href = '/admin/login';
-                            }
-                        }}
-                        className="btn btn-ghost btn-sm text-rose-500 hover:bg-rose-500/10"
-                    >
-                        ログアウト
-                    </button>
-                </div>
-
-                <nav className="nav justify-center flex-wrap">
-                    <Link href="/admin" className="nav-item active">ダッシュボード</Link>
-                    <Link href="/admin/riders" className="nav-item">選手管理</Link>
-                    <Link href="/admin/settings" className="nav-item">大会設定</Link>
-                    <Link href="/admin/logs" className="nav-item">ログ</Link>
-                </nav>
-            </header>
+            <AdminHeader />
 
             {/* Current Rider & Voting Control Card (Integrated) */}
             <div className="card mb-8 border-l-4 border-[var(--primary)]">

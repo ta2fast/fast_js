@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ContestSettings, EvaluationItem } from '@/types';
 import { calculateMaxJudgeScore } from '@/lib/scoring';
+import AdminHeader from '@/components/admin/AdminHeader';
 
 export default function SettingsPage() {
     const [settings, setSettings] = useState<ContestSettings | null>(null);
@@ -130,39 +131,7 @@ export default function SettingsPage() {
     return (
         <div className="min-h-screen p-4 md:p-8">
             {/* Header */}
-            <header className="mb-8">
-                <div className="flex items-center justify-between mb-4">
-                    <h1 className="text-2xl font-bold">⚙️ 運営画面</h1>
-                    <button
-                        onClick={async () => {
-                            await fetch('/api/admin/auth', { method: 'DELETE' });
-                            window.location.href = '/admin/login';
-                        }}
-                        className="btn btn-ghost btn-sm text-red-500"
-                    >
-                        ログアウト
-                    </button>
-                </div>
-
-                {/* Navigation */}
-                <nav className="nav justify-center flex-wrap">
-                    <Link href="/admin" className="nav-item">
-                        ダッシュボード
-                    </Link>
-                    <Link href="/admin/riders" className="nav-item">
-                        選手管理
-                    </Link>
-                    <Link href="/admin/settings" className="nav-item active">
-                        大会設定
-                    </Link>
-                    <Link href="/admin/logs" className="nav-item">
-                        ログ
-                    </Link>
-                    <Link href="/admin/help" className="nav-item">
-                        使い方
-                    </Link>
-                </nav>
-            </header>
+            <AdminHeader />
 
             <div className="grid gap-6 lg:grid-cols-2">
                 {/* Contest Info */}

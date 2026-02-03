@@ -48,9 +48,9 @@ export default function AdminLoginPage() {
                     <div className="w-20 h-20 bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)] rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg rotate-3">
                         <span className="text-4xl">🔐</span>
                     </div>
-                    <h1 className="text-2xl font-black tracking-tight text-white mb-2">Admin Access</h1>
+                    <h1 className="text-2xl font-black tracking-tight text-white mb-2">管理者認証</h1>
                     <p className="text-sm text-slate-400 font-medium">
-                        Enter password to manage the contest
+                        運営管理画面へ入るにはパスワードを入力してください
                     </p>
                 </div>
 
@@ -60,7 +60,7 @@ export default function AdminLoginPage() {
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            placeholder="••••••••"
+                            placeholder="パスワードを入力"
                             className="w-full bg-slate-900/50 border border-slate-700 rounded-2xl px-5 py-4 text-center text-xl text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/50 focus:border-[var(--primary)] transition-all"
                             autoFocus
                             required
@@ -84,7 +84,7 @@ export default function AdminLoginPage() {
                             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                         ) : (
                             <>
-                                <span>Sign In</span>
+                                <span>ログイン</span>
                                 <span className="group-hover:translate-x-1 transition-transform">→</span>
                             </>
                         )}
@@ -93,7 +93,7 @@ export default function AdminLoginPage() {
 
                 <div className="mt-10 text-center">
                     <a href="/" className="text-xs font-bold text-slate-500 hover:text-white transition-colors uppercase tracking-widest">
-                        ← Back to Top
+                        ← トップページへ戻る
                     </a>
                 </div>
             </div>
