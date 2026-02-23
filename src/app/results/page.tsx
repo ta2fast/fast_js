@@ -274,20 +274,15 @@ export default function ResultsPage() {
             <AnimatePresence>
                 {revealingItem && (
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.5, rotate: -5 }}
-                        animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                        exit={{ opacity: 0, scale: 1.5, filter: 'blur(20px)' }}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 1.2, filter: 'blur(10px)' }}
                         className="fixed inset-0 z-[60] flex flex-col items-center justify-center pointer-events-none"
                     >
                         <motion.div
-                            className="bg-[#fffa00] text-black px-6 py-1 shadow-[0_0_40px_rgba(255,250,0,0.4)] border-y-2 border-black"
-                        >
-                            <span className="text-lg md:text-xl font-bold tracking-tight">REVEALING</span>
-                        </motion.div>
-                        <motion.div
                             initial={{ y: 20, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
-                            className="text-[6vw] md:text-[5vw] font-bold tracking-tight leading-none text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.6)] mt-2"
+                            className="text-[10vw] md:text-[8vw] font-bold tracking-tight leading-none text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.6)]"
                         >
                             {revealingItem}
                         </motion.div>
