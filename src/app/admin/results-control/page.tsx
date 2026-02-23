@@ -98,7 +98,6 @@ export default function ResultsControlPage() {
                     </div>
                     <div className="flex gap-2">
                         <Link href="/admin" className="btn btn-ghost btn-sm">← 管理画面</Link>
-                        <Link href="/results" target="_blank" className="btn btn-primary btn-sm">リザルト画面を開く ↗</Link>
                     </div>
                 </header>
 

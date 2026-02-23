@@ -120,12 +120,20 @@ export default function AdminPage() {
 
             {/* Current Rider & Voting Control Card (Integrated) */}
             <div className="card mb-8 border-l-4 border-[var(--primary)]">
-                <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-                    🎤 パフォーマンス進行管理
-                    {settings?.votingEnabled && (
-                        <span className="badge badge-accent animate-pulse">投票受付中</span>
-                    )}
-                </h2>
+                <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold flex items-center gap-2">
+                        🎤 パフォーマンス進行管理
+                        {settings?.votingEnabled && (
+                            <span className="badge badge-accent animate-pulse">投票受付中</span>
+                        )}
+                    </h2>
+                    <Link
+                        href="/admin/results-control"
+                        className="btn btn-primary btn-sm flex items-center gap-2 h-10 px-6 shadow-lg hover:scale-105 transition-transform"
+                    >
+                        📊 リザルト演出設定
+                    </Link>
+                </div>
 
                 <div className="bg-[var(--surface-light)] rounded-2xl p-6 mb-8 shadow-inner">
                     {currentRider ? (

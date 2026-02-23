@@ -57,6 +57,7 @@ CREATE TABLE contest_settings (
     current_rider_id TEXT,
     contest_name TEXT DEFAULT 'BMX Flatland Contest',
     contest_date DATE DEFAULT CURRENT_DATE,
+    revealed_item_ids JSONB DEFAULT '[]'::jsonb,
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
