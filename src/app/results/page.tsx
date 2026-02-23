@@ -59,24 +59,69 @@ export default function ResultsPage() {
 
     // Track revealed items to play sound only on "new" reveals
     const prevRevealedCount = useRef(0);
-    const audioRef = useRef<HTMLAudioElement | null>(null);
+    const audioContextRef = useRef<AudioContext | null>(null);
 
     const playRevealSound = () => {
-        if (audioRef.current && audioEnabled) {
-            audioRef.current.currentTime = 0;
-            audioRef.current.play().catch(e => console.error('Audio play failed:', e));
+        if (!audioEnabled) return;
+
+        try {
+            if (!audioContextRef.current) {
+                const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+                audioContextRef.current = new AudioContextClass();
+            }
+
+            const ctx = audioContextRef.current;
+            if (ctx.state === 'suspended') {
+                ctx.resume();
+            }
+
+            const playTone = (freq: number, startTime: number, duration: number, volume: number) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, startTime);
+                // Sparkling frequency sweep
+                osc.frequency.exponentialRampToValueAtTime(freq * 1.5, startTime + duration);
+
+                gain.gain.setValueAtTime(0, startTime);
+                gain.gain.linearRampToValueAtTime(volume, startTime + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                osc.start(startTime);
+                osc.stop(startTime + duration);
+            };
+
+            const now = ctx.currentTime;
+            // High-pitched chime chord
+            playTone(880.00, now, 0.6, 0.1);    // A5
+            playTone(1108.73, now + 0.05, 0.5, 0.07); // C#6
+            playTone(1318.51, now + 0.1, 0.4, 0.05);  // E6
+            playTone(1760.00, now + 0.15, 0.3, 0.03); // A6
+        } catch (e) {
+            console.error('Web Audio failed:', e);
         }
     };
 
     const enableAudio = () => {
-        setAudioEnabled(true);
-        // Play and immediately pause to "unlock" audio on mobile/modern browsers
-        if (audioRef.current) {
-            audioRef.current.play().then(() => {
-                audioRef.current?.pause();
-                audioRef.current!.currentTime = 0;
-            }).catch(e => console.error('Audio unlock failed:', e));
-        }
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        const ctx = new AudioContextClass();
+        audioContextRef.current = ctx;
+
+        ctx.resume().then(() => {
+            setAudioEnabled(true);
+            // Play a silent seed tone to unlock
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            gain.gain.value = 0;
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.1);
+        });
     };
 
     const fetchData = async () => {
@@ -94,9 +139,9 @@ export default function ResultsPage() {
             }
             if (settingsData.success) {
                 const newSettings = settingsData.data as ContestSettings;
-                const newCount = newSettings.revealedItemIds.length;
+                const newCount = newSettings.revealedItemIds?.length || 0;
 
-                // If items were revealed (count increased), play sound
+                // Play sound if items were revealed
                 if (settings && newCount > prevRevealedCount.current) {
                     playRevealSound();
                 }
@@ -203,8 +248,6 @@ export default function ResultsPage() {
                 )}
             </AnimatePresence>
 
-            {/* Hidden Audio Element */}
-            <audio ref={audioRef} src="/sounds/reveal.mp3" preload="auto" />
 
             {/* High-visibility Legend */}
             <div className="flex justify-end gap-x-6 mb-4 opacity-90 border-b border-white/20 pb-2">
