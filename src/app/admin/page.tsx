@@ -158,6 +158,12 @@ export default function AdminPage() {
                                 >
                                     解除
                                 </button>
+                                <Link
+                                    href="/admin/results-control"
+                                    className="btn btn-primary flex items-center gap-2"
+                                >
+                                    📊 リザルト演出設定
+                                </Link>
                             </div>
                         </div>
                     ) : (

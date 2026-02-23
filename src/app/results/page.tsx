@@ -136,33 +136,25 @@ export default function ResultsPage() {
     const enabledItems = settings.evaluationItems.filter(item => item.enabled);
 
     return (
-        <div className="min-h-screen bg-[#0a0a0a] text-white p-8 font-black uppercase overflow-x-hidden">
-            <header className="mb-14 flex flex-col md:flex-row md:items-end justify-between border-b-8 border-white pb-6 gap-4">
-                <div>
-                    <h1 className="text-7xl md:text-9xl leading-none tracking-tighter">
-                        {settings.contestName || 'RESULTS'}
-                    </h1>
-                    <p className="text-3xl text-zinc-500 mt-2 font-bold">{settings.contestDate}</p>
-                </div>
-
-                <div className="flex flex-wrap gap-x-6 gap-y-2 justify-start md:justify-end max-w-2xl">
-                    {enabledItems.map((item, i) => (
-                        <div key={item.id} className="flex items-center gap-2">
-                            <div
-                                className="w-5 h-5 border-2 border-white/50"
-                                style={{ backgroundColor: ITEM_COLORS[i % ITEM_COLORS.length] }}
-                            />
-                            <span className="text-lg md:text-xl text-zinc-300">{item.name}</span>
-                        </div>
-                    ))}
-                    <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 border-2 border-white/50 bg-[#f87171]" />
-                        <span className="text-lg md:text-xl text-zinc-300">Audience</span>
+        <div className="h-screen w-screen bg-[#0a0a0a] text-white p-4 font-black uppercase overflow-hidden flex flex-col">
+            {/* Minimal Legend/Settings indicator at the top */}
+            <div className="flex justify-end gap-x-4 mb-2 opacity-50">
+                {enabledItems.map((item, i) => (
+                    <div key={item.id} className="flex items-center gap-1">
+                        <div
+                            className="w-3 h-3 border border-white/30"
+                            style={{ backgroundColor: ITEM_COLORS[i % ITEM_COLORS.length] }}
+                        />
+                        <span className="text-xs text-zinc-400">{item.name}</span>
                     </div>
+                ))}
+                <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 border border-white/30 bg-[#f87171]" />
+                    <span className="text-xs text-zinc-400">Audience</span>
                 </div>
-            </header>
+            </div>
 
-            <div className="flex flex-col gap-8 pb-32">
+            <div className="flex-1 flex flex-col gap-2 min-h-0">
                 <AnimatePresence mode="popLayout">
                     {processedRankings.map((res, index) => (
                         <motion.div
@@ -175,21 +167,21 @@ export default function ResultsPage() {
                                 layout: { type: 'spring', damping: 20, stiffness: 100 },
                                 opacity: { duration: 0.4 }
                             }}
-                            className="relative flex items-center gap-4 md:gap-8 h-20 md:h-28"
+                            className="relative flex items-center gap-4 flex-1 min-h-0"
                         >
                             {/* Rank & Name */}
-                            <div className="w-[300px] md:w-[450px] flex items-center gap-4 md:gap-8 shrink-0">
-                                <div className="text-6xl md:text-8xl w-16 md:w-28 text-zinc-800 italic font-black shrink-0">
+                            <div className="w-[200px] md:w-[350px] flex items-center gap-4 shrink-0">
+                                <div className="text-4xl md:text-6xl w-10 md:w-16 text-zinc-800 italic font-black shrink-0">
                                     {index + 1}
                                 </div>
                                 <div className="flex flex-col min-w-0">
-                                    <span className="text-3xl md:text-5xl text-white truncate font-black tracking-tight">{res.rider.riderName}</span>
-                                    <span className="text-lg md:text-2xl text-zinc-500 font-bold">{res.rider.name}</span>
+                                    <span className="text-xl md:text-3xl text-white truncate font-black tracking-tight">{res.rider.riderName}</span>
+                                    <span className="text-xs md:text-md text-zinc-500 font-bold truncate">{res.rider.name}</span>
                                 </div>
                             </div>
 
                             {/* Stacked Bar Container */}
-                            <div className="flex-1 bg-zinc-900/50 border-2 border-white/10 h-12 md:h-20 relative overflow-hidden flex shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)]">
+                            <div className="flex-1 bg-zinc-900/50 border border-white/10 h-3/4 max-h-16 relative overflow-hidden flex shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)]">
                                 {res.allItems.map((item) => (
                                     <motion.div
                                         key={item.id}
@@ -199,26 +191,14 @@ export default function ResultsPage() {
                                         }}
                                         transition={{ type: 'spring', stiffness: 40, damping: 12, mass: 0.5 }}
                                         style={{ backgroundColor: item.color }}
-                                        className="h-full relative group"
-                                    >
-                                        {item.revealed && item.score > 2 && (
-                                            <motion.div
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                                className="absolute inset-0 flex items-center justify-center overflow-hidden"
-                                            >
-                                                <span className="text-[10px] md:text-xs text-black/40 font-black truncate px-1">
-                                                    {item.name}
-                                                </span>
-                                            </motion.div>
-                                        )}
-                                    </motion.div>
+                                        className="h-full relative"
+                                    />
                                 ))}
                             </div>
 
                             {/* Score Display */}
-                            <div className="w-32 md:w-60 text-right shrink-0">
-                                <div className="text-5xl md:text-8xl font-black italic tracking-tighter text-[#fffa00] drop-shadow-[0_0_20px_rgba(255,250,0,0.3)]">
+                            <div className="w-24 md:w-40 text-right shrink-0">
+                                <div className="text-3xl md:text-6xl font-black italic tracking-tighter text-[#fffa00] drop-shadow-[0_0_20px_rgba(255,250,0,0.3)]">
                                     <AnimatedCounter value={res.currentDisplayedScore} />
                                 </div>
                             </div>
@@ -228,8 +208,8 @@ export default function ResultsPage() {
             </div>
 
             {/* Decorative BG Text */}
-            <div className="fixed bottom-[-5%] right-[-5%] pointer-events-none opacity-[0.03] z-[-1] select-none text-[25vw] font-black leading-none italic">
-                FINAL
+            <div className="fixed bottom-[2%] right-[2%] pointer-events-none opacity-[0.02] z-[-1] select-none text-[15vw] font-black leading-none italic">
+                {settings.contestName || 'FINAL'}
             </div>
             <div className="fixed top-20 left-[-5%] pointer-events-none opacity-[0.02] z-[-1] select-none text-[15vw] font-black leading-none">
                 STANDINGS
