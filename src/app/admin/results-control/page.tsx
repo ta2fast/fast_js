@@ -19,9 +19,12 @@ export default function ResultsControlPage() {
             const data: ApiResponse<ContestSettings> = await res.json();
             if (data.success && data.data) {
                 setSettings(data.data);
+            } else {
+                alert(`設定の読み込みに失敗しました: ${data.error || '不明なエラー'}`);
             }
         } catch (error) {
             console.error('Failed to fetch settings:', error);
+            alert('通信エラーが発生しました。サーバーの状態を確認してください。');
         } finally {
             setLoading(false);
         }
@@ -39,9 +42,12 @@ export default function ResultsControlPage() {
             const data: ApiResponse<ContestSettings> = await res.json();
             if (data.success && data.data) {
                 setSettings(data.data);
+            } else {
+                alert(`更新に失敗しました: ${data.error || '不明なエラー'}`);
             }
         } catch (error) {
             console.error('Failed to update revealed items:', error);
+            alert('通信エラーが発生しました。');
         } finally {
             setUpdating(false);
         }
@@ -129,8 +135,8 @@ export default function ResultsControlPage() {
                                         onClick={() => toggleItem(item.id)}
                                         disabled={updating}
                                         className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${isRevealed
-                                                ? 'border-[var(--secondary)] bg-[var(--secondary-light)] shadow-sm'
-                                                : 'border-[var(--surface-light)] bg-transparent opacity-60 grayscale hover:opacity-100'
+                                            ? 'border-[var(--secondary)] bg-[var(--secondary-light)] shadow-sm'
+                                            : 'border-[var(--surface-light)] bg-transparent opacity-60 grayscale hover:opacity-100'
                                             }`}
                                     >
                                         <div className="flex items-center gap-4">
@@ -152,8 +158,8 @@ export default function ResultsControlPage() {
                                 onClick={() => toggleItem('audience')}
                                 disabled={updating}
                                 className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${revealedIds.includes('audience')
-                                        ? 'border-[var(--secondary)] bg-[var(--secondary-light)] shadow-sm'
-                                        : 'border-[var(--surface-light)] bg-transparent opacity-60 grayscale hover:opacity-100'
+                                    ? 'border-[var(--secondary)] bg-[var(--secondary-light)] shadow-sm'
+                                    : 'border-[var(--surface-light)] bg-transparent opacity-60 grayscale hover:opacity-100'
                                     }`}
                             >
                                 <div className="flex items-center gap-4">
