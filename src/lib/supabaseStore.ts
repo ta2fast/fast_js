@@ -412,6 +412,7 @@ export async function getSettings(): Promise<ContestSettings> {
             currentRiderId: data.current_rider_id,
             contestName: data.contest_name,
             contestDate: data.contest_date,
+            revealedItemIds: data.revealed_item_ids || [],
         };
     } catch (err) {
         console.error('Failed to fetch settings:', err);
@@ -440,6 +441,7 @@ export async function updateSettings(updates: Partial<ContestSettings>): Promise
             current_rider_id: newSettings.currentRiderId,
             contest_name: newSettings.contestName,
             contest_date: newSettings.contestDate,
+            revealed_item_ids: newSettings.revealedItemIds,
             updated_at: new Date().toISOString(),
         };
 
