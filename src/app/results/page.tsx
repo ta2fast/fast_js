@@ -280,16 +280,16 @@ export default function ResultsPage() {
                         className="fixed inset-0 z-[60] flex flex-col items-center justify-center pointer-events-none"
                     >
                         <motion.div
-                            className="bg-[#fffa00] text-black px-12 py-4 skew-x-[-10deg] shadow-[0_0_100px_rgba(255,250,0,0.8)] border-y-8 border-black"
-                            animate={{ x: [-20, 20, -20] }}
+                            className="bg-[#fffa00] text-black px-8 py-2 skew-x-[-10deg] shadow-[0_0_80px_rgba(255,250,0,0.6)] border-y-4 border-black"
+                            animate={{ x: [-10, 10, -10] }}
                             transition={{ repeat: Infinity, duration: 0.1, ease: 'linear' }}
                         >
-                            <span className="text-4xl md:text-6xl font-black italic tracking-tighter">REVEALING</span>
+                            <span className="text-2xl md:text-4xl font-black italic tracking-tighter">REVEALING</span>
                         </motion.div>
                         <motion.div
                             initial={{ x: 100, opacity: 0 }}
                             animate={{ x: 0, opacity: 1 }}
-                            className="text-[12vw] md:text-[15vw] font-black italic tracking-tighter leading-none text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.8)] mt-[-2rem]"
+                            className="text-[8vw] md:text-[10vw] font-black italic tracking-tighter leading-none text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.7)] mt-[-1rem]"
                         >
                             {revealingItem}
                         </motion.div>
@@ -389,11 +389,8 @@ export default function ResultsPage() {
             </div>
 
             <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap');
-        
         body {
           background-color: black;
-          font-family: 'Archivo Black', sans-serif;
           overflow: hidden;
         }
       `}</style>
