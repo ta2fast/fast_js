@@ -356,8 +356,19 @@ export default function ResultsPage() {
                                             backgroundColor: item.color,
                                             boxShadow: item.revealed ? `inset 0 0 20px rgba(255,255,255,0.4), 0 0 15px ${item.color}66` : 'none'
                                         }}
-                                        className="h-full relative"
-                                    />
+                                        className="h-full relative flex items-center justify-center overflow-hidden"
+                                    >
+                                        {item.revealed && item.score > 5 && (
+                                            <motion.span
+                                                initial={{ opacity: 0, scale: 0.5 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                transition={{ delay: 0.4 }}
+                                                className="text-black font-black text-lg md:text-2xl italic tracking-tighter"
+                                            >
+                                                {item.score.toFixed(1)}
+                                            </motion.span>
+                                        )}
+                                    </motion.div>
                                 ))}
                             </div>
 
