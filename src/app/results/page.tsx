@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     RiderResult,
@@ -55,6 +55,29 @@ export default function ResultsPage() {
     const [results, setResults] = useState<RiderResult[]>([]);
     const [settings, setSettings] = useState<ContestSettings | null>(null);
     const [loading, setLoading] = useState(true);
+    const [audioEnabled, setAudioEnabled] = useState(false);
+
+    // Track revealed items to play sound only on "new" reveals
+    const prevRevealedCount = useRef(0);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+
+    const playRevealSound = () => {
+        if (audioRef.current && audioEnabled) {
+            audioRef.current.currentTime = 0;
+            audioRef.current.play().catch(e => console.error('Audio play failed:', e));
+        }
+    };
+
+    const enableAudio = () => {
+        setAudioEnabled(true);
+        // Play and immediately pause to "unlock" audio on mobile/modern browsers
+        if (audioRef.current) {
+            audioRef.current.play().then(() => {
+                audioRef.current?.pause();
+                audioRef.current!.currentTime = 0;
+            }).catch(e => console.error('Audio unlock failed:', e));
+        }
+    };
 
     const fetchData = async () => {
         try {
@@ -70,7 +93,15 @@ export default function ResultsPage() {
                 setResults(scoresData.data);
             }
             if (settingsData.success) {
-                setSettings(settingsData.data);
+                const newSettings = settingsData.data as ContestSettings;
+                const newCount = newSettings.revealedItemIds.length;
+
+                // If items were revealed (count increased), play sound
+                if (settings && newCount > prevRevealedCount.current) {
+                    playRevealSound();
+                }
+                prevRevealedCount.current = newCount;
+                setSettings(newSettings);
             }
         } catch (error) {
             console.error('Failed to fetch results data:', error);
@@ -83,7 +114,7 @@ export default function ResultsPage() {
         fetchData();
         const interval = setInterval(fetchData, 3000); // 3s update
         return () => clearInterval(interval);
-    }, []);
+    }, [audioEnabled, settings]);
 
     const processedRankings = useMemo(() => {
         if (!settings || results.length === 0) return [];
@@ -147,7 +178,34 @@ export default function ResultsPage() {
     const enabledItems = settings.evaluationItems.filter(item => item.enabled);
 
     return (
-        <div className="h-screen w-screen bg-black text-white p-4 font-black uppercase overflow-hidden flex flex-col">
+        <div className="h-screen w-screen bg-black text-white p-4 font-black uppercase overflow-hidden flex flex-col relative">
+            {/* Audio Activator Overlay */}
+            <AnimatePresence>
+                {!audioEnabled && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-8 text-center cursor-pointer"
+                        onClick={enableAudio}
+                    >
+                        <motion.div
+                            animate={{ scale: [1, 1.05, 1] }}
+                            transition={{ repeat: Infinity, duration: 2 }}
+                            className="bg-[#fffa00] text-black px-12 py-6 rounded-full text-3xl md:text-5xl font-black mb-8 shadow-[0_0_50px_rgba(255,250,0,0.5)]"
+                        >
+                            CLICK TO START
+                        </motion.div>
+                        <p className="text-zinc-400 text-xl tracking-widest italic">
+                            ACTIVATE AUDIO FOR THE SHOW
+                        </p>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Hidden Audio Element */}
+            <audio ref={audioRef} src="/sounds/reveal.mp3" preload="auto" />
+
             {/* High-visibility Legend */}
             <div className="flex justify-end gap-x-6 mb-4 opacity-90 border-b border-white/20 pb-2">
                 {enabledItems.map((item, i) => (
