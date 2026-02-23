@@ -56,9 +56,11 @@ export default function ResultsPage() {
     const [settings, setSettings] = useState<ContestSettings | null>(null);
     const [loading, setLoading] = useState(true);
     const [audioEnabled, setAudioEnabled] = useState(false);
+    const [revealingItem, setRevealingItem] = useState<string | null>(null);
 
     // Track revealed items to play sound only on "new" reveals
     const prevRevealedCount = useRef(0);
+    const prevRevealedIds = useRef<string[]>([]);
     const audioContextRef = useRef<AudioContext | null>(null);
 
     const playRevealSound = () => {
@@ -139,13 +141,33 @@ export default function ResultsPage() {
             }
             if (settingsData.success) {
                 const newSettings = settingsData.data as ContestSettings;
-                const newCount = newSettings.revealedItemIds?.length || 0;
+                const newIds = newSettings.revealedItemIds || [];
+                const newCount = newIds.length;
 
-                // Play sound if items were revealed
+                // Play sound and flash overlay if items were revealed
                 if (settings && newCount > prevRevealedCount.current) {
                     playRevealSound();
+
+                    // Find which ID was just added
+                    const newlyAddedId = newIds.find(id => !prevRevealedIds.current.includes(id));
+                    if (newlyAddedId) {
+                        let itemName = '';
+                        if (newlyAddedId === 'audience') {
+                            itemName = 'AUDIENCE SCORE';
+                        } else {
+                            const item = newSettings.evaluationItems.find(i => i.id === newlyAddedId);
+                            itemName = item?.name || '';
+                        }
+
+                        if (itemName) {
+                            setRevealingItem(itemName);
+                            setTimeout(() => setRevealingItem(null), 3500);
+                        }
+                    }
                 }
+
                 prevRevealedCount.current = newCount;
+                prevRevealedIds.current = newIds;
                 setSettings(newSettings);
             }
         } catch (error) {
@@ -244,6 +266,33 @@ export default function ResultsPage() {
                         <p className="text-zinc-400 text-xl tracking-widest italic">
                             ACTIVATE AUDIO FOR THE SHOW
                         </p>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Now Revealing Overlay */}
+            <AnimatePresence>
+                {revealingItem && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.5, rotate: -5 }}
+                        animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                        exit={{ opacity: 0, scale: 1.5, filter: 'blur(20px)' }}
+                        className="fixed inset-0 z-[60] flex flex-col items-center justify-center pointer-events-none"
+                    >
+                        <motion.div
+                            className="bg-[#fffa00] text-black px-12 py-4 skew-x-[-10deg] shadow-[0_0_100px_rgba(255,250,0,0.8)] border-y-8 border-black"
+                            animate={{ x: [-20, 20, -20] }}
+                            transition={{ repeat: Infinity, duration: 0.1, ease: 'linear' }}
+                        >
+                            <span className="text-4xl md:text-6xl font-black italic tracking-tighter">REVEALING</span>
+                        </motion.div>
+                        <motion.div
+                            initial={{ x: 100, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            className="text-[12vw] md:text-[15vw] font-black italic tracking-tighter leading-none text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.8)] mt-[-2rem]"
+                        >
+                            {revealingItem}
+                        </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>
