@@ -1,0 +1,64 @@
+﻿
+> fastjudge@0.1.0 build
+> next build
+
+笆ｲ Next.js 16.1.2 (Turbopack)
+- Environments: .env.local
+
+node.exe : 笞 The "middleware
+" file convention is deprecat
+ed. Please use "proxy" instea
+d. Learn more: https://nextjs
+.org/docs/messages/middleware
+-to-proxy
+発生場所 行:1 文字:1
++ & "C:\Program Files\nodejs/
+node.exe" "C:\Program Files\n
+odejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~
+    + CategoryInfo           
+   : NotSpecified: (笞 The   
+  "middlew...leware-to-pro   
+ xy:String) [], RemoteExc    
+eption
+    + FullyQualifiedErrorId  
+   : NativeCommandError
+ 
+  Creating an optimized production build ...
+笨・Compiled successfully in 2.3s
+  Running TypeScript ...
+Failed to compile.
+
+./src/app/results/page.tsx:10
+1:28
+Type error: Cannot find name 
+'OUTDOOR_COLORS'.
+
+[0m [90m  99 |[39m        
+             name[33m:[39m 
+item[33m.[39mname[33m,[39
+m
+ [90m 100 |[39m            
+         score[33m:[39m avg
+[33m,[39m
+[31m[1m>[22m[39m[90m 101
+ |[39m                     c
+olor[33m:[39m [33mOUTDOOR_
+COLORS[39m[index [33m%[39m
+ [33mOUTDOOR_COLORS[39m[33
+m.[39mlength][33m,[39m
+ [90m     |[39m            
+                [31m[1m^[2
+2m[39m
+ [90m 102 |[39m            
+         revealed[33m:[39m 
+revealedIds[33m.[39minclude
+s(item[33m.[39mid)
+ [90m 103 |[39m            
+     }[33m;[39m
+ [90m 104 |[39m            
+ })[33m;[39m[0m
+Next.js build worker exited w
+ith code: 1 and signal: null

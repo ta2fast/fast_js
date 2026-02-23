@@ -5,8 +5,19 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     RiderResult,
     ContestSettings,
-    ITEM_COLORS,
 } from '@/types';
+
+// Outdoor-optimized high-contrast neon palette
+const OUTDOOR_COLORS = [
+    '#ff0055', // Power Pink
+    '#00ff99', // Spring Green
+    '#00ccff', // Electric Blue
+    '#ffff00', // Mega Yellow
+    '#ff9900', // Vivid Orange
+    '#cc33ff', // Magic Purple
+    '#ff3300', // Blaze Red
+    '#33ff00', // Lime Punch
+];
 
 // Count-up component for the total score
 function AnimatedCounter({ value }: { value: number }) {
