@@ -245,7 +245,7 @@ export default function ResultsPage() {
     const enabledItems = settings.evaluationItems.filter(item => item.enabled);
 
     return (
-        <div className="h-screen w-screen bg-black text-white p-4 font-black uppercase overflow-hidden flex flex-col relative">
+        <div className="h-screen w-screen bg-black text-white p-4 uppercase overflow-hidden flex flex-col relative">
             {/* Audio Activator Overlay */}
             <AnimatePresence>
                 {!audioEnabled && (
@@ -280,16 +280,14 @@ export default function ResultsPage() {
                         className="fixed inset-0 z-[60] flex flex-col items-center justify-center pointer-events-none"
                     >
                         <motion.div
-                            className="bg-[#fffa00] text-black px-8 py-2 skew-x-[-10deg] shadow-[0_0_80px_rgba(255,250,0,0.6)] border-y-4 border-black"
-                            animate={{ x: [-10, 10, -10] }}
-                            transition={{ repeat: Infinity, duration: 0.1, ease: 'linear' }}
+                            className="bg-[#fffa00] text-black px-6 py-1 shadow-[0_0_40px_rgba(255,250,0,0.4)] border-y-2 border-black"
                         >
-                            <span className="text-2xl md:text-4xl font-black italic tracking-tighter">REVEALING</span>
+                            <span className="text-lg md:text-xl font-bold tracking-tight">REVEALING</span>
                         </motion.div>
                         <motion.div
-                            initial={{ x: 100, opacity: 0 }}
-                            animate={{ x: 0, opacity: 1 }}
-                            className="text-[8vw] md:text-[10vw] font-black italic tracking-tighter leading-none text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.7)] mt-[-1rem]"
+                            initial={{ y: 20, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            className="text-[6vw] md:text-[5vw] font-bold tracking-tight leading-none text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.6)] mt-2"
                         >
                             {revealingItem}
                         </motion.div>
@@ -306,12 +304,12 @@ export default function ResultsPage() {
                             className="w-4 h-4 border-2 border-white"
                             style={{ backgroundColor: OUTDOOR_COLORS[i % OUTDOOR_COLORS.length] }}
                         />
-                        <span className="text-xs md:text-sm text-white font-black">{item.name}</span>
+                        <span className="text-xs md:text-sm text-white font-bold">{item.name}</span>
                     </div>
                 ))}
                 <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-white bg-[#f87171]" />
-                    <span className="text-xs md:text-sm text-white font-black">Audience</span>
+                    <span className="text-xs md:text-sm text-white font-bold">Audience</span>
                 </div>
             </div>
 
@@ -333,11 +331,11 @@ export default function ResultsPage() {
                         >
                             {/* Rank & Name */}
                             <div className="w-[180px] md:w-[320px] flex items-center gap-4 shrink-0 pl-4">
-                                <div className={`text-5xl md:text-7xl w-14 md:w-24 italic font-black shrink-0 ${index < 3 ? 'text-[#fffa00]' : 'text-zinc-600'}`}>
+                                <div className={`text-4xl md:text-6xl w-14 md:w-24 font-bold shrink-0 ${index < 3 ? 'text-[#fffa00]' : 'text-zinc-600'}`}>
                                     {index + 1}
                                 </div>
                                 <div className="flex flex-col min-w-0">
-                                    <span className="text-2xl md:text-4xl text-white truncate font-black tracking-tighter leading-none">{res.rider.riderName}</span>
+                                    <span className="text-xl md:text-3xl text-white truncate font-bold tracking-tight leading-none">{res.rider.riderName}</span>
                                     <span className="text-xs md:text-sm text-zinc-400 font-bold truncate mt-1">{res.rider.name}</span>
                                 </div>
                             </div>
@@ -363,7 +361,7 @@ export default function ResultsPage() {
                                                 initial={{ opacity: 0, scale: 0.5 }}
                                                 animate={{ opacity: 1, scale: 1 }}
                                                 transition={{ delay: 0.4 }}
-                                                className="text-black font-black text-lg md:text-2xl italic tracking-tighter"
+                                                className="text-black font-bold text-sm md:text-lg tracking-tight"
                                             >
                                                 {item.score.toFixed(1)}
                                             </motion.span>
@@ -372,20 +370,14 @@ export default function ResultsPage() {
                                 ))}
                             </div>
 
-                            {/* Score Display */}
-                            <div className="w-32 md:w-56 text-right shrink-0">
-                                <div className="text-4xl md:text-8xl font-black italic tracking-tighter text-[#fffa00] drop-shadow-[0_0_15px_rgba(255,250,0,0.6)]">
+                            <div className="w-24 md:w-40 text-right shrink-0">
+                                <div className="text-3xl md:text-6xl font-bold tracking-tight text-[#fffa00] drop-shadow-[0_0_10px_rgba(255,250,0,0.5)]">
                                     <AnimatedCounter value={res.currentDisplayedScore} />
                                 </div>
                             </div>
                         </motion.div>
                     ))}
                 </AnimatePresence>
-            </div>
-
-            {/* High-visibility Decorative BG */}
-            <div className="fixed bottom-[2%] left-[2%] pointer-events-none opacity-[0.05] z-[-1] select-none text-[15vw] font-black leading-none italic text-white/50">
-                {settings.contestName || 'BMX FINAL'}
             </div>
 
             <style jsx global>{`
