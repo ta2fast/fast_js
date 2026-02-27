@@ -360,17 +360,26 @@ export default function ResultsPage() {
                                 layout: { type: 'spring', damping: 25, stiffness: 120, mass: 0.8 },
                                 opacity: { duration: 0.3 }
                             }}
-                            className="relative flex items-center gap-4 flex-1 min-h-0 bg-zinc-900/40 rounded-lg pr-4 border-l-[12px]"
-                            style={{ borderLeftColor: index < 3 ? '#fffa00' : '#333' }}
+                            className={`relative flex items-center gap-4 flex-1 min-h-0 bg-zinc-900/40 rounded-lg pr-4 border-l-[12px] ${index < 3 ? 'shadow-[0_0_20px_rgba(255,250,0,0.2)]' : ''}`}
+                            style={{
+                                borderLeftColor: index === 0 ? '#fffa00' : index === 1 ? '#e2e8f0' : index === 2 ? '#b45309' : '#333'
+                            }}
                         >
                             {/* Rank & Name */}
                             <div className="w-[180px] md:w-[320px] flex items-center gap-4 shrink-0 pl-4">
-                                <div className={`text-4xl md:text-6xl w-14 md:w-24 font-bold shrink-0 ${index < 3 ? 'text-[#fffa00]' : 'text-zinc-600'}`}>
+                                <motion.div
+                                    animate={index === 0 ? { scale: [1, 1.1, 1] } : {}}
+                                    transition={index === 0 ? { repeat: Infinity, duration: 2 } : {}}
+                                    className={`text-4xl md:text-6xl w-14 md:w-24 font-bold shrink-0 ${index === 0 ? 'text-[#fffa00] drop-shadow-[0_0_10px_rgba(255,250,0,0.8)]' :
+                                            index === 1 ? 'text-[#e2e8f0] drop-shadow-[0_0_10px_rgba(226,232,240,0.8)]' :
+                                                index === 2 ? 'text-[#b45309] drop-shadow-[0_0_10px_rgba(180,83,9,0.8)]' :
+                                                    'text-zinc-600'
+                                        }`}
+                                >
                                     {index + 1}
-                                </div>
+                                </motion.div>
                                 <div className="flex flex-col min-w-0">
-                                    <span className="text-xl md:text-3xl text-white truncate font-bold tracking-tight leading-none">{res.rider.riderName}</span>
-                                    <span className="text-xs md:text-sm text-zinc-400 font-bold truncate mt-1">{res.rider.name}</span>
+                                    <span className="text-2xl md:text-4xl text-white truncate font-black tracking-tight leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">{res.rider.riderName}</span>
                                 </div>
                             </div>
 
