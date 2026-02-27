@@ -67,6 +67,8 @@ export interface ContestSettings {
   contestName: string;
   contestDate: string;
   revealedItemIds: string[];      // 公開済みの評価項目ID
+  animationDelayScoreMs: number;  // 項目表示から点数反映までの遅延 (ms)
+  animationDelayRankMs: number;   // 点数反映から順位変更までの遅延 (ms)
 }
 
 // 評価項目のカラーパレット
@@ -154,4 +156,6 @@ export const DEFAULT_CONTEST_SETTINGS: ContestSettings = {
   contestName: 'BMX Flatland Contest',
   contestDate: new Date().toISOString().split('T')[0],
   revealedItemIds: [],
+  animationDelayScoreMs: 2000,
+  animationDelayRankMs: 2000,
 };

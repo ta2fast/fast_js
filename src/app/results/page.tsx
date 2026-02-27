@@ -177,12 +177,12 @@ export default function ResultsPage() {
                             // 2. Score reflection (extend bars, count up)
                             displayTimeoutRef.current = setTimeout(() => {
                                 setDisplayedIds(newIds);
-                            }, 2000);
+                            }, newSettings.animationDelayScoreMs ?? 2000);
 
                             // 3. Rank change (resort riders)
                             sortTimeoutRef.current = setTimeout(() => {
                                 setSortingIds(newIds);
-                            }, 4000);
+                            }, (newSettings.animationDelayScoreMs ?? 2000) + (newSettings.animationDelayRankMs ?? 2000));
                         } else {
                             // Fallback if no item matched
                             setDisplayedIds(newIds);

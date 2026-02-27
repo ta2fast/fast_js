@@ -413,6 +413,8 @@ export async function getSettings(): Promise<ContestSettings> {
             contestName: data.contest_name,
             contestDate: data.contest_date,
             revealedItemIds: data.revealed_item_ids || [],
+            animationDelayScoreMs: data.animation_delay_score_ms ?? DEFAULT_CONTEST_SETTINGS.animationDelayScoreMs,
+            animationDelayRankMs: data.animation_delay_rank_ms ?? DEFAULT_CONTEST_SETTINGS.animationDelayRankMs,
         };
     } catch (err) {
         console.error('Failed to fetch settings:', err);

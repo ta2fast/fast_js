@@ -234,6 +234,45 @@ export default function SettingsPage() {
                     </div>
                 </div>
 
+                {/* Animation Settings */}
+                <div className="card lg:col-span-2">
+                    <h2 className="text-xl font-bold mb-4">🎬 リザルト画面アニメーション設定</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm text-[var(--text-muted)] mb-2">
+                                項目表示から点数反映までの遅延 (ミリ秒)
+                            </label>
+                            <input
+                                type="number"
+                                value={settings.animationDelayScoreMs}
+                                onChange={e => saveSettings({ animationDelayScoreMs: parseInt(e.target.value) || 2000 })}
+                                className="input"
+                                min="0"
+                                step="100"
+                            />
+                            <p className="text-xs text-[var(--text-muted)] mt-1">
+                                スコア項目名が表示されてからバーが伸び始めるまでの時間 (1000ms = 1秒)
+                            </p>
+                        </div>
+                        <div>
+                            <label className="block text-sm text-[var(--text-muted)] mb-2">
+                                点数反映から順位変更までの遅延 (ミリ秒)
+                            </label>
+                            <input
+                                type="number"
+                                value={settings.animationDelayRankMs}
+                                onChange={e => saveSettings({ animationDelayRankMs: parseInt(e.target.value) || 2000 })}
+                                className="input"
+                                min="0"
+                                step="100"
+                            />
+                            <p className="text-xs text-[var(--text-muted)] mt-1">
+                                バーが伸び始めてから順位が入れ替わるまでの時間
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Evaluation Items */}
                 <div className="card lg:col-span-2">
                     <div className="flex items-center justify-between mb-4">
