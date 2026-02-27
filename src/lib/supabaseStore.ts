@@ -444,6 +444,8 @@ export async function updateSettings(updates: Partial<ContestSettings>): Promise
             contest_name: newSettings.contestName,
             contest_date: newSettings.contestDate,
             revealed_item_ids: newSettings.revealedItemIds,
+            animation_delay_score_ms: newSettings.animationDelayScoreMs,
+            animation_delay_rank_ms: newSettings.animationDelayRankMs,
             updated_at: new Date().toISOString(),
         };
 

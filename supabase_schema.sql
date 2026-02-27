@@ -58,6 +58,8 @@ CREATE TABLE contest_settings (
     contest_name TEXT DEFAULT 'BMX Flatland Contest',
     contest_date DATE DEFAULT CURRENT_DATE,
     revealed_item_ids JSONB DEFAULT '[]'::jsonb,
+    animation_delay_score_ms INTEGER DEFAULT 2000,
+    animation_delay_rank_ms INTEGER DEFAULT 2000,
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
