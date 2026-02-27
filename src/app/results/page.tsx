@@ -57,11 +57,16 @@ export default function ResultsPage() {
     const [loading, setLoading] = useState(true);
     const [audioEnabled, setAudioEnabled] = useState(false);
     const [revealingItem, setRevealingItem] = useState<string | null>(null);
+    const [displayedIds, setDisplayedIds] = useState<string[]>([]);
+    const [sortingIds, setSortingIds] = useState<string[]>([]);
 
     // Track revealed items to play sound only on "new" reveals
     const prevRevealedCount = useRef(0);
     const prevRevealedIds = useRef<string[]>([]);
     const audioContextRef = useRef<AudioContext | null>(null);
+
+    const displayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const sortTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const playRevealSound = () => {
         if (!audioEnabled) return;
@@ -162,8 +167,37 @@ export default function ResultsPage() {
                         if (itemName) {
                             setRevealingItem(itemName);
                             setTimeout(() => setRevealingItem(null), 3500);
+
+                            // Clear any existing timeouts to prevent race conditions on rapid clicks
+                            if (displayTimeoutRef.current) clearTimeout(displayTimeoutRef.current);
+                            if (sortTimeoutRef.current) clearTimeout(sortTimeoutRef.current);
+
+                            // Sequence:
+                            // 1. Item display (immediate, overlapping with Revealing Item)
+                            // 2. Score reflection (extend bars, count up)
+                            displayTimeoutRef.current = setTimeout(() => {
+                                setDisplayedIds(newIds);
+                            }, 2000);
+
+                            // 3. Rank change (resort riders)
+                            sortTimeoutRef.current = setTimeout(() => {
+                                setSortingIds(newIds);
+                            }, 4000);
+                        } else {
+                            // Fallback if no item matched
+                            setDisplayedIds(newIds);
+                            setSortingIds(newIds);
                         }
+                    } else {
+                        setDisplayedIds(newIds);
+                        setSortingIds(newIds);
                     }
+                } else if (!settings || newCount <= prevRevealedCount.current) {
+                    // Initial load or items were removed
+                    if (displayTimeoutRef.current) clearTimeout(displayTimeoutRef.current);
+                    if (sortTimeoutRef.current) clearTimeout(sortTimeoutRef.current);
+                    setDisplayedIds(newIds);
+                    setSortingIds(newIds);
                 }
 
                 prevRevealedCount.current = newCount;
@@ -187,7 +221,6 @@ export default function ResultsPage() {
         if (!settings || results.length === 0) return [];
 
         const enabledItems = settings.evaluationItems.filter(item => item.enabled);
-        const revealedIds = settings.revealedItemIds || [];
 
         return results.map(res => {
             // Calculate breakdown based on judge scores
@@ -208,7 +241,7 @@ export default function ResultsPage() {
                     name: item.name,
                     score: avg,
                     color: OUTDOOR_COLORS[index % OUTDOOR_COLORS.length],
-                    revealed: revealedIds.includes(item.id)
+                    revealed: displayedIds.includes(item.id)
                 };
             });
 
@@ -218,21 +251,27 @@ export default function ResultsPage() {
                 name: 'Audience',
                 score: res.audienceWeightedScore,
                 color: '#f87171',
-                revealed: revealedIds.includes('audience')
+                revealed: displayedIds.includes('audience')
             };
 
             const allItems = [...itemBreakdown, audienceBreakdown];
+
             const currentDisplayedScore = allItems
                 .filter(item => item.revealed)
+                .reduce((sum, item) => sum + item.score, 0);
+
+            const sortingScore = allItems
+                .filter(item => sortingIds.includes(item.id))
                 .reduce((sum, item) => sum + item.score, 0);
 
             return {
                 ...res,
                 allItems,
                 currentDisplayedScore,
+                sortingScore
             };
-        }).sort((a, b) => b.currentDisplayedScore - a.currentDisplayedScore); // 表示スコア順にソートして順位入れ替えを実現
-    }, [results, settings]);
+        }).sort((a, b) => b.sortingScore - a.sortingScore); // 順位変更のタイミングを制御するためsortingScoreを使用
+    }, [results, settings, displayedIds, sortingIds]);
 
     if (loading || !settings) {
         return (
