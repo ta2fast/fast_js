@@ -67,6 +67,7 @@ export default function ResultsPage() {
 
     const displayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const sortTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const animatingRef = useRef(false);
 
     const playRevealSound = () => {
         if (!audioEnabled) return;
@@ -172,17 +173,24 @@ export default function ResultsPage() {
                             if (displayTimeoutRef.current) clearTimeout(displayTimeoutRef.current);
                             if (sortTimeoutRef.current) clearTimeout(sortTimeoutRef.current);
 
+                            const scoreDelay = newSettings.animationDelayScoreMs ?? 2000;
+                            const rankDelay = newSettings.animationDelayRankMs ?? 2000;
+
+                            // Mark animation as in progress
+                            animatingRef.current = true;
+
                             // Sequence:
                             // 1. Item display (immediate, overlapping with Revealing Item)
                             // 2. Score reflection (extend bars, count up)
                             displayTimeoutRef.current = setTimeout(() => {
                                 setDisplayedIds(newIds);
-                            }, newSettings.animationDelayScoreMs ?? 2000);
+                            }, scoreDelay);
 
                             // 3. Rank change (resort riders)
                             sortTimeoutRef.current = setTimeout(() => {
                                 setSortingIds(newIds);
-                            }, (newSettings.animationDelayScoreMs ?? 2000) + (newSettings.animationDelayRankMs ?? 2000));
+                                animatingRef.current = false;
+                            }, scoreDelay + rankDelay);
                         } else {
                             // Fallback if no item matched
                             setDisplayedIds(newIds);
@@ -192,13 +200,19 @@ export default function ResultsPage() {
                         setDisplayedIds(newIds);
                         setSortingIds(newIds);
                     }
-                } else if (!settings || newCount <= prevRevealedCount.current) {
-                    // Initial load or items were removed
+                } else if (!settings) {
+                    // Initial load
+                    setDisplayedIds(newIds);
+                    setSortingIds(newIds);
+                } else if (newCount < prevRevealedCount.current) {
+                    // Items were removed — reset immediately
                     if (displayTimeoutRef.current) clearTimeout(displayTimeoutRef.current);
                     if (sortTimeoutRef.current) clearTimeout(sortTimeoutRef.current);
+                    animatingRef.current = false;
                     setDisplayedIds(newIds);
                     setSortingIds(newIds);
                 }
+                // If newCount === prevRevealedCount.current AND animating, do nothing (let timeouts finish)
 
                 prevRevealedCount.current = newCount;
                 prevRevealedIds.current = newIds;

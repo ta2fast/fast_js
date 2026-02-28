@@ -215,19 +215,19 @@ export default function ResultsControlPage() {
                                     項目名表示 → 点数反映
                                 </label>
                                 <div className="flex items-center gap-3">
-                                    <input
-                                        type="number"
+                                    <select
                                         value={scoreDelaySec}
                                         onChange={(e) => {
-                                            const val = parseFloat(e.target.value) || 0;
+                                            const val = parseFloat(e.target.value);
                                             setScoreDelaySec(val);
+                                            updateAnimationDelays(val, rankDelaySec);
                                         }}
-                                        onBlur={() => updateAnimationDelays(scoreDelaySec, rankDelaySec)}
                                         className="input flex-1"
-                                        min="0"
-                                        step="0.5"
-                                    />
-                                    <span className="text-lg font-bold text-[var(--text-muted)]">秒</span>
+                                    >
+                                        {[0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map(v => (
+                                            <option key={v} value={v}>{v} 秒</option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <p className="text-xs text-[var(--text-muted)] mt-1">
                                     項目名が表示されてからスコアバーが伸び始めるまでの待ち時間
@@ -238,19 +238,19 @@ export default function ResultsControlPage() {
                                     点数反映 → 順位変更
                                 </label>
                                 <div className="flex items-center gap-3">
-                                    <input
-                                        type="number"
+                                    <select
                                         value={rankDelaySec}
                                         onChange={(e) => {
-                                            const val = parseFloat(e.target.value) || 0;
+                                            const val = parseFloat(e.target.value);
                                             setRankDelaySec(val);
+                                            updateAnimationDelays(scoreDelaySec, val);
                                         }}
-                                        onBlur={() => updateAnimationDelays(scoreDelaySec, rankDelaySec)}
                                         className="input flex-1"
-                                        min="0"
-                                        step="0.5"
-                                    />
-                                    <span className="text-lg font-bold text-[var(--text-muted)]">秒</span>
+                                    >
+                                        {[0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map(v => (
+                                            <option key={v} value={v}>{v} 秒</option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <p className="text-xs text-[var(--text-muted)] mt-1">
                                     スコアバーが伸びてから順位が入れ替わるまでの待ち時間
