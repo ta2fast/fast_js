@@ -32,6 +32,16 @@ const SORT_TRANSITION_SPEED = 1500;    // ms
 const ANIMATION_STYLE = 'Pop-in';
 const LABEL_FONT_SIZE_CLASS = 'text-8xl md:text-[12vw]'; // Large
 
+const DEFAULT_ANIMATION_SETTINGS = {
+    label_display_time: 3000,
+    bar_transition_speed: 2000,
+    sort_delay_time: 3000,
+    sort_transition_speed: 1500,
+    animation_style: 'Pop-in',
+    label_font_size: 'text-8xl md:text-[12vw]',
+    label_transition_speed: 500
+};
+
 // Count-up component for the total score
 function AnimatedCounter({ value, duration = 3000 }: { value: number; duration?: number }) {
     const [displayValue, setDisplayValue] = useState(0);
@@ -75,6 +85,7 @@ export default function ResultsPage() {
     const [displayedIds, setDisplayedIds] = useState<string[]>([]);      // Stage 2: score confirmed
     const [sortingIds, setSortingIds] = useState<string[]>([]);          // Stage 3: rank reorder
     const [animationSortDuration, setAnimationSortDuration] = useState(0.8);
+    const [animationSettings, setAnimationSettings] = useState(DEFAULT_ANIMATION_SETTINGS);
 
     const latestResultsRef = useRef<RiderResult[]>([]);
 
@@ -188,6 +199,29 @@ export default function ResultsPage() {
         }
     }, []);
 
+    // Load Animation Settings once on mount
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const { data, error } = await supabase.from('animation_settings').select('*').eq('id', 1).single();
+                if (data && !error) {
+                    setAnimationSettings({
+                        label_display_time: Number(data.label_display_time) || DEFAULT_ANIMATION_SETTINGS.label_display_time,
+                        bar_transition_speed: Number(data.bar_transition_speed) || DEFAULT_ANIMATION_SETTINGS.bar_transition_speed,
+                        sort_delay_time: Number(data.sort_delay_time) || DEFAULT_ANIMATION_SETTINGS.sort_delay_time,
+                        sort_transition_speed: Number(data.sort_transition_speed) || DEFAULT_ANIMATION_SETTINGS.sort_transition_speed,
+                        animation_style: data.animation_style || DEFAULT_ANIMATION_SETTINGS.animation_style,
+                        label_font_size: data.label_font_size || DEFAULT_ANIMATION_SETTINGS.label_font_size,
+                        label_transition_speed: DEFAULT_ANIMATION_SETTINGS.label_transition_speed,
+                    });
+                }
+            } catch (err) {
+                console.error('[Results] Failed to fetch animation settings', err);
+            }
+        };
+        fetchSettings();
+    }, []);
+
     // === Handle Broadcast Action ===
     const handleBroadcastEvent = useCallback(async (payload: any) => {
         if (isAnimatingRef.current) return;
@@ -200,10 +234,10 @@ export default function ResultsPage() {
             const eventType = payload.event;
             const data = payload.payload;
 
-            const labelMs = LABEL_DISPLAY_TIME;
-            const barMs = BAR_TRANSITION_SPEED;
-            const sortDelayMs = SORT_DELAY_TIME;
-            const sortDurationMs = SORT_TRANSITION_SPEED;
+            const labelMs = animationSettings.label_display_time;
+            const barMs = animationSettings.bar_transition_speed;
+            const sortDelayMs = animationSettings.sort_delay_time;
+            const sortDurationMs = animationSettings.sort_transition_speed;
 
             if (eventType === 'reveal_item') {
                 const { itemId, itemName } = data;
@@ -256,7 +290,7 @@ export default function ResultsPage() {
         } finally {
             isAnimatingRef.current = false;
         }
-    }, [audioEnabled, fetchDataSilent, barRevealedIds]);
+    }, [audioEnabled, fetchDataSilent, barRevealedIds, animationSettings]);
 
     // Setup Realtime Listener
     useEffect(() => {
@@ -377,19 +411,33 @@ export default function ResultsPage() {
                         className="fixed inset-0 z-[60] flex flex-col items-center justify-center pointer-events-none"
                     >
                         <motion.div
-                            key={ANIMATION_STYLE} // Ensure re-render when style changes
-                            variants={{
-                                initial: { opacity: 0, scale: 0 },
-                                animate: { opacity: 1, scale: [0, 1.25, 1], rotate: [0, -5, 0] },
-                                exit: { opacity: 0, scale: 2, filter: 'blur(20px)' }
-                            }}
+                            key={animationSettings.animation_style} // Ensure re-render when style changes
+                            variants={
+                                animationSettings.animation_style === 'Fade'
+                                    ? {
+                                        initial: { opacity: 0 },
+                                        animate: { opacity: 1 },
+                                        exit: { opacity: 0 }
+                                    }
+                                    : animationSettings.animation_style === 'Slide'
+                                        ? {
+                                            initial: { opacity: 0, x: -100 },
+                                            animate: { opacity: 1, x: 0 },
+                                            exit: { opacity: 0, x: 100 }
+                                        }
+                                        : { // Default Pop-in
+                                            initial: { opacity: 0, scale: 0 },
+                                            animate: { opacity: 1, scale: [0, 1.25, 1], rotate: [0, -5, 0] },
+                                            exit: { opacity: 0, scale: 2, filter: 'blur(20px)' }
+                                        }
+                            }
                             initial="initial"
                             animate="animate"
                             exit="exit"
-                            transition={{ duration: 0.5 }}
+                            transition={{ duration: animationSettings.label_transition_speed / 1000 }}
                             className={`
                                 font-black tracking-tighter leading-none text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.8)] text-center px-4
-                                ${LABEL_FONT_SIZE_CLASS}
+                                ${animationSettings.label_font_size}
                             `}
                         >
                             {revealingItem}
@@ -476,7 +524,7 @@ export default function ResultsPage() {
                                         }}
                                         transition={{
                                             type: 'tween',
-                                            duration: BAR_TRANSITION_SPEED / 1000,
+                                            duration: animationSettings.bar_transition_speed / 1000,
                                             ease: 'easeOut'
                                         }}
                                         style={{

@@ -82,6 +82,9 @@ export default function ResultsControlPage() {
                         <p className="text-[var(--text-muted)]">リザルト画面での項目表示を制御します</p>
                     </div>
                     <div className="flex gap-2">
+                        <Link href="/admin/animation-settings" className="btn btn-outline btn-sm">
+                            ⚙️ アニメ設定
+                        </Link>
                         <Link href="/admin" className="btn btn-ghost btn-sm">← 管理画面</Link>
                     </div>
                 </header>
