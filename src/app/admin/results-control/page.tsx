@@ -51,10 +51,11 @@ export default function ResultsControlPage() {
         }
     };
 
-    const updateReveals = async (newRevealedIds: string[]) => {
+    const updateReveals = async (newRevealedIds: string[], triggerItemId?: string) => {
         if (!settings) return;
         setUpdating(true);
         try {
+            // Step 1: Update the revealed item IDs (data sync)
             const res = await fetch('/api/admin/settings', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -65,6 +66,19 @@ export default function ResultsControlPage() {
                 setSettings(data.data);
             } else {
                 alert(`更新に失敗しました: ${data.error || '不明なエラー'}`);
+                return;
+            }
+
+            // Step 2: If a trigger item is specified, send animation trigger
+            if (triggerItemId) {
+                await fetch('/api/admin/animation-settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        is_running: true,
+                        target_item_id: triggerItemId,
+                    }),
+                });
             }
         } catch (error) {
             console.error('Failed to update revealed items:', error);
@@ -106,10 +120,12 @@ export default function ResultsControlPage() {
     const toggleItem = (itemId: string) => {
         if (!settings) return;
         const current = settings.revealedItemIds || [];
-        const next = current.includes(itemId)
-            ? current.filter(id => id !== itemId)
-            : [...current, itemId];
-        updateReveals(next);
+        const isAdding = !current.includes(itemId);
+        const next = isAdding
+            ? [...current, itemId]
+            : current.filter(id => id !== itemId);
+        // Only trigger animation when adding (revealing) an item
+        updateReveals(next, isAdding ? itemId : undefined);
     };
 
     const revealAll = () => {
@@ -161,12 +177,18 @@ export default function ResultsControlPage() {
                         <div className="flex flex-wrap gap-4 mb-8">
                             <button
                                 onClick={async () => {
+                                    if (!settings) return;
                                     setUpdating(true);
                                     try {
+                                        const revealedIds = settings.revealedItemIds || [];
+                                        const lastItemId = revealedIds.length > 0 ? revealedIds[revealedIds.length - 1] : null;
                                         await fetch('/api/admin/animation-settings', {
                                             method: 'POST',
                                             headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ is_running: true }),
+                                            body: JSON.stringify({
+                                                is_running: true,
+                                                target_item_id: lastItemId,
+                                            }),
                                         });
                                         alert('表示を開始します');
                                     } catch (e) {

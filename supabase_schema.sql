@@ -116,6 +116,7 @@ CREATE TABLE IF NOT EXISTS animation_settings (
     animation_style TEXT DEFAULT 'Standard',
     label_font_size TEXT DEFAULT 'Medium',
     is_running BOOLEAN DEFAULT FALSE,
+    target_item_id TEXT DEFAULT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     CONSTRAINT one_row CHECK (id = 1)
 );
