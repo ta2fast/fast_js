@@ -74,6 +74,9 @@ export default function ResultsPage() {
     // === Animation lock ===
     const isAnimatingRef = useRef(false);
 
+    // Ref to hold runAnimationSequence for polling fallback
+    const runAnimationRef = useRef<((targetItemId: string) => Promise<void>) | null>(null);
+
     // Track revealed items for initial load
     const initialLoadDone = useRef(false);
     const audioContextRef = useRef<AudioContext | null>(null);
@@ -205,6 +208,22 @@ export default function ResultsPage() {
                     setBarRevealedIds(currentRevealed);
                     setDisplayedIds(currentRevealed);
                     setSortingIds(currentRevealed);
+                }
+            }
+
+            // Polling fallback: check is_running flag from animation settings
+            if (animData.success && animData.data) {
+                const animSettings = animData.data as AnimationSettings;
+                if (animSettings.is_running && !isAnimatingRef.current) {
+                    // Use target_item_id if available, otherwise fall back to last revealed item
+                    const targetId = animSettings.target_item_id
+                        || (mergedSettings.revealedItemIds && mergedSettings.revealedItemIds.length > 0
+                            ? mergedSettings.revealedItemIds[mergedSettings.revealedItemIds.length - 1]
+                            : null);
+                    if (targetId && runAnimationRef.current) {
+                        console.log(`[Results] Polling detected is_running=true, target: ${targetId}`);
+                        runAnimationRef.current(targetId);
+                    }
                 }
             }
         } catch (error) {
@@ -350,6 +369,11 @@ export default function ResultsPage() {
         }
     }, [audioEnabled]);
 
+    // Keep the ref in sync with the latest runAnimationSequence
+    useEffect(() => {
+        runAnimationRef.current = runAnimationSequence;
+    }, [runAnimationSequence]);
+
     useEffect(() => {
         fetchDataSilent();
         const interval = setInterval(fetchDataSilent, 3000); // 3s background sync
@@ -367,9 +391,14 @@ export default function ResultsPage() {
                 const newData = payload.new as AnimationSettings;
 
                 // Check for animation trigger
-                if (newData.is_running && newData.target_item_id) {
-                    console.log(`[Results] Animation trigger detected! Item: ${newData.target_item_id}`);
-                    runAnimationSequence(newData.target_item_id);
+                if (newData.is_running && !isAnimatingRef.current) {
+                    const targetId = newData.target_item_id || null;
+                    if (targetId) {
+                        console.log(`[Results] Animation trigger detected! Item: ${targetId}`);
+                        runAnimationSequence(targetId);
+                    } else {
+                        console.log('[Results] is_running=true but no target_item_id, will be handled by polling');
+                    }
                 }
             })
             .subscribe();
