@@ -9,6 +9,7 @@ export default function ResultsControlPage() {
     const [settings, setSettings] = useState<ContestSettings | null>(null);
     const [loading, setLoading] = useState(true);
     const [updating, setUpdating] = useState(false);
+    const [revealedIds, setRevealedIds] = useState<string[]>([]);
 
     useEffect(() => {
         fetchSettings();
@@ -28,6 +29,7 @@ export default function ResultsControlPage() {
             event: 'reveal_item',
             payload: { itemId, itemName }
         }).then(() => {
+            setRevealedIds(prev => [...new Set([...prev, itemId])]);
             setTimeout(() => setUpdating(false), 300);
         });
     };
@@ -44,12 +46,16 @@ export default function ResultsControlPage() {
     };
 
     const triggerReset = () => {
+        if (!window.confirm('本当にすべての結果表示をリセットしてよろしいですか？\n※リザルト画面のバーがすべて0に戻ります。')) {
+            return;
+        }
         setUpdating(true);
         supabase.channel('animation_control').send({
             type: 'broadcast',
             event: 'reset',
             payload: {}
         }).then(() => {
+            setRevealedIds([]);
             setTimeout(() => setUpdating(false), 300);
         });
     };
@@ -66,7 +72,6 @@ export default function ResultsControlPage() {
     if (!settings) return null;
 
     const evaluationItems = settings.evaluationItems.filter(item => item.enabled);
-    const revealedIds = settings.revealedItemIds || [];
 
     return (
         <div className="min-h-screen bg-[var(--background)] p-4 md:p-8">
@@ -83,25 +88,41 @@ export default function ResultsControlPage() {
 
                 <div className="grid gap-6">
                     <section className="card">
-                        <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-                            <span className="w-2 h-6 bg-[var(--secondary)] rounded-full"></span>
-                            表示コントロール
+                        <h2 className="text-xl font-bold mb-6 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <span className="w-2 h-6 bg-[var(--secondary)] rounded-full"></span>
+                                表示コントロール
+                            </div>
+                            <button
+                                onClick={triggerReset}
+                                disabled={updating}
+                                className="btn btn-sm bg-red-600 hover:bg-red-700 text-white border-none shadow-sm"
+                            >
+                                🔄 オールクリア
+                            </button>
                         </h2>
 
                         <div className="grid gap-3 mb-8">
                             {evaluationItems.map((item) => {
+                                const isRevealed = revealedIds.includes(item.id);
                                 return (
                                     <button
                                         key={item.id}
                                         onClick={() => triggerRevealItem(item.id, item.name)}
                                         disabled={updating}
-                                        className="flex items-center justify-between p-4 rounded-xl border-2 border-[var(--secondary)] bg-[var(--secondary-light)] shadow-sm hover:brightness-110 active:scale-95 transition-all text-left"
+                                        className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all text-left ${isRevealed
+                                                ? 'border-zinc-700 bg-zinc-800 text-zinc-300 shadow-none'
+                                                : 'border-[var(--secondary)] bg-[var(--secondary-light)] shadow-sm hover:brightness-110 active:scale-95'
+                                            }`}
                                     >
                                         <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold bg-[var(--secondary)] text-white">
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${isRevealed ? 'bg-zinc-700 text-zinc-400' : 'bg-[var(--secondary)] text-white'
+                                                }`}>
                                                 {item.order}
                                             </div>
-                                            <span className="text-xl font-bold">『{item.name}』をアニメーション発表</span>
+                                            <span className="text-xl font-bold">
+                                                {isRevealed ? `✅ 『${item.name}』 (発表済み)` : `『${item.name}』をアニメーション発表`}
+                                            </span>
                                         </div>
                                     </button>
                                 );
@@ -110,13 +131,19 @@ export default function ResultsControlPage() {
                             <button
                                 onClick={() => triggerRevealItem('audience', '観客投票点')}
                                 disabled={updating}
-                                className="flex items-center justify-between p-4 rounded-xl border-2 border-[#f87171] bg-[#f87171]/10 shadow-sm hover:brightness-110 active:scale-95 transition-all text-left"
+                                className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all text-left ${revealedIds.includes('audience')
+                                        ? 'border-zinc-700 bg-zinc-800 text-zinc-300 shadow-none'
+                                        : 'border-[#f87171] bg-[#f87171]/10 shadow-sm hover:brightness-110 active:scale-95'
+                                    }`}
                             >
                                 <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold bg-[#f87171] text-white">
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${revealedIds.includes('audience') ? 'bg-zinc-700 text-zinc-400' : 'bg-[#f87171] text-white'
+                                        }`}>
                                         👥
                                     </div>
-                                    <span className="text-xl font-bold text-[#f87171]">『観客投票点』をアニメーション発表</span>
+                                    <span className={`text-xl font-bold ${revealedIds.includes('audience') ? '' : 'text-[#f87171]'}`}>
+                                        {revealedIds.includes('audience') ? '✅ 『観客投票点』 (発表済み)' : '『観客投票点』をアニメーション発表'}
+                                    </span>
                                 </div>
                             </button>
                         </div>
@@ -131,7 +158,7 @@ export default function ResultsControlPage() {
                                 disabled={updating}
                                 className="w-full btn btn-primary py-6 text-2xl shadow-[0_0_20px_rgba(255,250,0,0.3)] hover:scale-[1.02] active:scale-95 transition-all outline-none border-2 border-[#fffa00]"
                             >
-                                🏆 最終順位の入れ替えを実行 🏆
+                                🏆 順位入れ替え実行 🏆
                             </button>
                         </div>
                     </section>
