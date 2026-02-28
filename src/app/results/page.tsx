@@ -199,28 +199,29 @@ export default function ResultsPage() {
         }
     }, []);
 
+    const fetchAnimationSettings = useCallback(async () => {
+        try {
+            const { data, error } = await supabase.from('animation_settings').select('*').eq('id', 1).single();
+            if (data && !error) {
+                setAnimationSettings({
+                    label_display_time: Number(data.label_display_time) || DEFAULT_ANIMATION_SETTINGS.label_display_time,
+                    bar_transition_speed: Number(data.bar_transition_speed) || DEFAULT_ANIMATION_SETTINGS.bar_transition_speed,
+                    sort_delay_time: Number(data.sort_delay_time) || DEFAULT_ANIMATION_SETTINGS.sort_delay_time,
+                    sort_transition_speed: Number(data.sort_transition_speed) || DEFAULT_ANIMATION_SETTINGS.sort_transition_speed,
+                    animation_style: data.animation_style || DEFAULT_ANIMATION_SETTINGS.animation_style,
+                    label_font_size: data.label_font_size || DEFAULT_ANIMATION_SETTINGS.label_font_size,
+                    label_transition_speed: DEFAULT_ANIMATION_SETTINGS.label_transition_speed,
+                });
+            }
+        } catch (err) {
+            console.error('[Results] Failed to fetch animation settings', err);
+        }
+    }, []);
+
     // Load Animation Settings once on mount
     useEffect(() => {
-        const fetchSettings = async () => {
-            try {
-                const { data, error } = await supabase.from('animation_settings').select('*').eq('id', 1).single();
-                if (data && !error) {
-                    setAnimationSettings({
-                        label_display_time: Number(data.label_display_time) || DEFAULT_ANIMATION_SETTINGS.label_display_time,
-                        bar_transition_speed: Number(data.bar_transition_speed) || DEFAULT_ANIMATION_SETTINGS.bar_transition_speed,
-                        sort_delay_time: Number(data.sort_delay_time) || DEFAULT_ANIMATION_SETTINGS.sort_delay_time,
-                        sort_transition_speed: Number(data.sort_transition_speed) || DEFAULT_ANIMATION_SETTINGS.sort_transition_speed,
-                        animation_style: data.animation_style || DEFAULT_ANIMATION_SETTINGS.animation_style,
-                        label_font_size: data.label_font_size || DEFAULT_ANIMATION_SETTINGS.label_font_size,
-                        label_transition_speed: DEFAULT_ANIMATION_SETTINGS.label_transition_speed,
-                    });
-                }
-            } catch (err) {
-                console.error('[Results] Failed to fetch animation settings', err);
-            }
-        };
-        fetchSettings();
-    }, []);
+        fetchAnimationSettings();
+    }, [fetchAnimationSettings]);
 
     // === Handle Broadcast Action ===
     const handleBroadcastEvent = useCallback(async (payload: any) => {
@@ -283,6 +284,12 @@ export default function ResultsPage() {
                 setBarRevealedIds([]);
                 setDisplayedIds([]);
                 setSortingIds([]);
+
+                // If the reset came from the settings page, reload the settings
+                if (data?.reloadSettings) {
+                    console.log(`[Animation] Reloading settings from database`);
+                    await fetchAnimationSettings();
+                }
             }
 
         } catch (err) {
@@ -290,7 +297,7 @@ export default function ResultsPage() {
         } finally {
             isAnimatingRef.current = false;
         }
-    }, [audioEnabled, fetchDataSilent, barRevealedIds, animationSettings]);
+    }, [audioEnabled, fetchDataSilent, barRevealedIds, animationSettings, fetchAnimationSettings]);
 
     // Setup Realtime Listener
     useEffect(() => {

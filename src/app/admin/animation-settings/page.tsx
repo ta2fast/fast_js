@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
 // Define the interface based on the SQL schema
@@ -26,6 +27,7 @@ const DEFAULT_SETTINGS: AnimationSettings = {
 };
 
 export default function AnimationSettingsPage() {
+    const router = useRouter();
     const [settings, setSettings] = useState<AnimationSettings>(DEFAULT_SETTINGS);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -83,8 +85,18 @@ export default function AnimationSettingsPage() {
                 });
 
             if (error) throw error;
-            setMessage('設定を保存しました。');
-            setTimeout(() => setMessage(''), 3000);
+
+            // リザルト画面にリセットと再読み込みを促すイベントを送信
+            await supabase.channel('animation_control').send({
+                type: 'broadcast',
+                event: 'reset',
+                payload: { reloadSettings: true }
+            });
+
+            setMessage('設定を保存しました。コントロール画面へ戻ります...');
+            setTimeout(() => {
+                router.push('/admin/results-control');
+            }, 1000);
         } catch (err) {
             console.error('Save error:', err);
             setMessage('保存時にエラーが発生しました。');
