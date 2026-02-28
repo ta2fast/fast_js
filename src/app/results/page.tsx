@@ -380,7 +380,7 @@ export default function ResultsPage() {
                             }}
                         >
                             {/* Rank & Name */}
-                            <div className={`${index < 3 ? 'w-[180px] md:w-[340px]' : 'w-[140px] md:w-[260px]'} flex items-center gap-3 shrink-0 pl-4`}>
+                            <div className="w-[160px] md:w-[300px] flex items-center gap-3 shrink-0 pl-4">
                                 <motion.div
                                     animate={index === 0 ? { scale: [1, 1.1, 1] } : {}}
                                     transition={index === 0 ? { repeat: Infinity, duration: 2 } : {}}
@@ -427,7 +427,7 @@ export default function ResultsPage() {
                                 ))}
                             </div>
 
-                            <div className={`${index < 3 ? 'w-24 md:w-44' : 'w-20 md:w-36'} text-right shrink-0`}>
+                            <div className="w-24 md:w-40 text-right shrink-0">
                                 <div className={`${index < 3 ? 'text-3xl md:text-5xl' : 'text-2xl md:text-4xl'} font-bold tracking-tight text-[#fffa00] drop-shadow-[0_0_10px_rgba(255,250,0,0.5)]`}>
                                     <AnimatedCounter value={res.currentDisplayedScore} />
                                 </div>
