@@ -57,14 +57,16 @@ export default function ResultsPage() {
     const [loading, setLoading] = useState(true);
     const [audioEnabled, setAudioEnabled] = useState(false);
     const [revealingItem, setRevealingItem] = useState<string | null>(null);
-    const [displayedIds, setDisplayedIds] = useState<string[]>([]);
-    const [sortingIds, setSortingIds] = useState<string[]>([]);
+    const [barRevealedIds, setBarRevealedIds] = useState<string[]>([]);  // Stage 1: bars extend
+    const [displayedIds, setDisplayedIds] = useState<string[]>([]);      // Stage 2: score confirmed
+    const [sortingIds, setSortingIds] = useState<string[]>([]);          // Stage 3: rank reorder
 
     // Track revealed items to play sound only on "new" reveals
     const prevRevealedCount = useRef(0);
     const prevRevealedIds = useRef<string[]>([]);
     const audioContextRef = useRef<AudioContext | null>(null);
 
+    const barTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const displayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const sortTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const animatingRef = useRef(false);
@@ -170,45 +172,53 @@ export default function ResultsPage() {
                             setTimeout(() => setRevealingItem(null), 3500);
 
                             // Clear any existing timeouts to prevent race conditions on rapid clicks
+                            if (barTimeoutRef.current) clearTimeout(barTimeoutRef.current);
                             if (displayTimeoutRef.current) clearTimeout(displayTimeoutRef.current);
                             if (sortTimeoutRef.current) clearTimeout(sortTimeoutRef.current);
 
-                            const scoreDelay = newSettings.animationDelayScoreMs ?? 2000;
-                            const rankDelay = newSettings.animationDelayRankMs ?? 2000;
+                            const scoreDelay = newSettings.animationDelayScoreMs ?? 3000;
+                            const rankDelay = newSettings.animationDelayRankMs ?? 3000;
 
                             // Mark animation as in progress
                             animatingRef.current = true;
 
-                            // Sequence:
-                            // 1. Item display (immediate, overlapping with Revealing Item)
-                            // 2. Score reflection (extend bars, count up)
+                            // === 3-Stage Animation Sequence ===
+                            // Stage 1 (0s): Bars start extending immediately
+                            setBarRevealedIds(newIds);
+
+                            // Stage 2 (scoreDelay): Score number confirmed
                             displayTimeoutRef.current = setTimeout(() => {
                                 setDisplayedIds(newIds);
                             }, scoreDelay);
 
-                            // 3. Rank change (resort riders)
+                            // Stage 3 (scoreDelay + rankDelay): Rank reorder
                             sortTimeoutRef.current = setTimeout(() => {
                                 setSortingIds(newIds);
                                 animatingRef.current = false;
                             }, scoreDelay + rankDelay);
                         } else {
                             // Fallback if no item matched
+                            setBarRevealedIds(newIds);
                             setDisplayedIds(newIds);
                             setSortingIds(newIds);
                         }
                     } else {
+                        setBarRevealedIds(newIds);
                         setDisplayedIds(newIds);
                         setSortingIds(newIds);
                     }
                 } else if (!settings) {
                     // Initial load
+                    setBarRevealedIds(newIds);
                     setDisplayedIds(newIds);
                     setSortingIds(newIds);
                 } else if (newCount < prevRevealedCount.current) {
                     // Items were removed — reset immediately
+                    if (barTimeoutRef.current) clearTimeout(barTimeoutRef.current);
                     if (displayTimeoutRef.current) clearTimeout(displayTimeoutRef.current);
                     if (sortTimeoutRef.current) clearTimeout(sortTimeoutRef.current);
                     animatingRef.current = false;
+                    setBarRevealedIds(newIds);
                     setDisplayedIds(newIds);
                     setSortingIds(newIds);
                 }
@@ -255,7 +265,7 @@ export default function ResultsPage() {
                     name: item.name,
                     score: avg,
                     color: OUTDOOR_COLORS[index % OUTDOOR_COLORS.length],
-                    revealed: displayedIds.includes(item.id)
+                    revealed: barRevealedIds.includes(item.id)  // Stage 1: bars use barRevealedIds
                 };
             });
 
@@ -265,13 +275,14 @@ export default function ResultsPage() {
                 name: 'Audience',
                 score: res.audienceWeightedScore,
                 color: '#f87171',
-                revealed: displayedIds.includes('audience')
+                revealed: barRevealedIds.includes('audience')  // Stage 1: bars use barRevealedIds
             };
 
             const allItems = [...itemBreakdown, audienceBreakdown];
 
+            // Score counter uses displayedIds (Stage 2: score confirmed)
             const currentDisplayedScore = allItems
-                .filter(item => item.revealed)
+                .filter(item => displayedIds.includes(item.id))
                 .reduce((sum, item) => sum + item.score, 0);
 
             const sortingScore = allItems
@@ -285,7 +296,7 @@ export default function ResultsPage() {
                 sortingScore
             };
         }).sort((a, b) => b.sortingScore - a.sortingScore); // 順位変更のタイミングを制御するためsortingScoreを使用
-    }, [results, settings, displayedIds, sortingIds]);
+    }, [results, settings, barRevealedIds, displayedIds, sortingIds]);
 
     if (loading || !settings) {
         return (

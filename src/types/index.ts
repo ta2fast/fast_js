@@ -156,6 +156,6 @@ export const DEFAULT_CONTEST_SETTINGS: ContestSettings = {
   contestName: 'BMX Flatland Contest',
   contestDate: new Date().toISOString().split('T')[0],
   revealedItemIds: [],
-  animationDelayScoreMs: 2000,
-  animationDelayRankMs: 2000,
+  animationDelayScoreMs: 3000,
+  animationDelayRankMs: 3000,
 };
