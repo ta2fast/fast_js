@@ -88,6 +88,7 @@ export default function ResultsPage() {
     const [animationSettings, setAnimationSettings] = useState(DEFAULT_ANIMATION_SETTINGS);
 
     const latestResultsRef = useRef<RiderResult[]>([]);
+    const animationSettingsRef = useRef(DEFAULT_ANIMATION_SETTINGS);
 
     // === Animation lock ===
     const isAnimatingRef = useRef(false);
@@ -203,15 +204,17 @@ export default function ResultsPage() {
         try {
             const { data, error } = await supabase.from('animation_settings').select('*').eq('id', 1).single();
             if (data && !error) {
-                setAnimationSettings({
-                    label_display_time: Number(data.label_display_time) || DEFAULT_ANIMATION_SETTINGS.label_display_time,
-                    bar_transition_speed: Number(data.bar_transition_speed) || DEFAULT_ANIMATION_SETTINGS.bar_transition_speed,
-                    sort_delay_time: Number(data.sort_delay_time) || DEFAULT_ANIMATION_SETTINGS.sort_delay_time,
-                    sort_transition_speed: Number(data.sort_transition_speed) || DEFAULT_ANIMATION_SETTINGS.sort_transition_speed,
+                const newSettings = {
+                    label_display_time: Number(data.label_display_time) ?? DEFAULT_ANIMATION_SETTINGS.label_display_time,
+                    bar_transition_speed: Number(data.bar_transition_speed) ?? DEFAULT_ANIMATION_SETTINGS.bar_transition_speed,
+                    sort_delay_time: Number(data.sort_delay_time) ?? DEFAULT_ANIMATION_SETTINGS.sort_delay_time,
+                    sort_transition_speed: Number(data.sort_transition_speed) ?? DEFAULT_ANIMATION_SETTINGS.sort_transition_speed,
                     animation_style: data.animation_style || DEFAULT_ANIMATION_SETTINGS.animation_style,
                     label_font_size: data.label_font_size || DEFAULT_ANIMATION_SETTINGS.label_font_size,
                     label_transition_speed: DEFAULT_ANIMATION_SETTINGS.label_transition_speed,
-                });
+                };
+                setAnimationSettings(newSettings);
+                animationSettingsRef.current = newSettings;
             }
         } catch (err) {
             console.error('[Results] Failed to fetch animation settings', err);
@@ -235,10 +238,10 @@ export default function ResultsPage() {
             const eventType = payload.event;
             const data = payload.payload;
 
-            const labelMs = animationSettings.label_display_time;
-            const barMs = animationSettings.bar_transition_speed;
-            const sortDelayMs = animationSettings.sort_delay_time;
-            const sortDurationMs = animationSettings.sort_transition_speed;
+            const labelMs = animationSettingsRef.current.label_display_time;
+            const barMs = animationSettingsRef.current.bar_transition_speed;
+            const sortDelayMs = animationSettingsRef.current.sort_delay_time;
+            const sortDurationMs = animationSettingsRef.current.sort_transition_speed;
 
             if (eventType === 'reveal_item') {
                 const { itemId, itemName } = data;
@@ -297,7 +300,7 @@ export default function ResultsPage() {
         } finally {
             isAnimatingRef.current = false;
         }
-    }, [audioEnabled, fetchDataSilent, barRevealedIds, animationSettings, fetchAnimationSettings]);
+    }, [audioEnabled, fetchDataSilent, barRevealedIds]);
 
     // Setup Realtime Listener
     useEffect(() => {
