@@ -111,12 +111,12 @@ export default function ResultsControlPage() {
                                         onClick={() => triggerRevealItem(item.id, item.name)}
                                         disabled={updating}
                                         className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all text-left ${isRevealed
-                                                ? 'border-zinc-700 bg-zinc-800 text-zinc-300 shadow-none'
-                                                : 'border-[var(--secondary)] bg-[var(--secondary-light)] shadow-sm hover:brightness-110 active:scale-95'
+                                            ? 'border-zinc-700 bg-zinc-800 text-zinc-300 shadow-none'
+                                            : 'border-[var(--secondary)] bg-[var(--secondary)] text-white shadow-md hover:brightness-110 active:scale-95'
                                             }`}
                                     >
                                         <div className="flex items-center gap-4">
-                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${isRevealed ? 'bg-zinc-700 text-zinc-400' : 'bg-[var(--secondary)] text-white'
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${isRevealed ? 'bg-zinc-700 text-zinc-400' : 'bg-white text-[var(--secondary)]'
                                                 }`}>
                                                 {item.order}
                                             </div>
@@ -132,16 +132,16 @@ export default function ResultsControlPage() {
                                 onClick={() => triggerRevealItem('audience', '観客投票点')}
                                 disabled={updating}
                                 className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all text-left ${revealedIds.includes('audience')
-                                        ? 'border-zinc-700 bg-zinc-800 text-zinc-300 shadow-none'
-                                        : 'border-[#f87171] bg-[#f87171]/10 shadow-sm hover:brightness-110 active:scale-95'
+                                    ? 'border-zinc-700 bg-zinc-800 text-zinc-300 shadow-none'
+                                    : 'border-[#f87171] bg-[#f87171] text-white shadow-md hover:brightness-110 active:scale-95'
                                     }`}
                             >
                                 <div className="flex items-center gap-4">
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${revealedIds.includes('audience') ? 'bg-zinc-700 text-zinc-400' : 'bg-[#f87171] text-white'
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${revealedIds.includes('audience') ? 'bg-zinc-700 text-zinc-400' : 'bg-white text-[#f87171]'
                                         }`}>
                                         👥
                                     </div>
-                                    <span className={`text-xl font-bold ${revealedIds.includes('audience') ? '' : 'text-[#f87171]'}`}>
+                                    <span className={`text-xl font-bold`}>
                                         {revealedIds.includes('audience') ? '✅ 『観客投票点』 (発表済み)' : '『観客投票点』をアニメーション発表'}
                                     </span>
                                 </div>
