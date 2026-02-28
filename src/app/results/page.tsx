@@ -392,10 +392,10 @@ export default function ResultsPage() {
                     return (
                         <motion.div
                             animate={isActive ? { scale: 1.3, y: -5 } : { scale: 1, y: 0 }}
-                            className={`flex items-center gap-2 transition-colors ${isActive ? 'text-[#fffa00]' : 'text-zinc-500'}`}
+                            className={`flex items-center gap-2 transition-colors ${isActive ? 'text-[#fffa00]' : 'text-white'}`}
                         >
                             <div
-                                className={`w-4 h-4 border-2 ${isActive ? 'border-[#fffa00] shadow-[0_0_10px_rgba(255,250,0,0.8)]' : 'border-zinc-500'}`}
+                                className={`w-4 h-4 border-2 ${isActive ? 'border-[#fffa00] shadow-[0_0_10px_rgba(255,250,0,0.8)]' : 'border-white'}`}
                                 style={{ backgroundColor: OUTDOOR_COLORS[i % OUTDOOR_COLORS.length] }}
                             />
                             <span className={`text-sm md:text-base font-black tracking-tight ${isActive ? 'drop-shadow-[0_0_8px_rgba(255,250,0,0.6)]' : ''}`}>
