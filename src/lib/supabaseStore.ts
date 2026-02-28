@@ -401,7 +401,7 @@ export async function getSettings(): Promise<ContestSettings> {
 
         const rawRevealedIds = data.revealed_item_ids || [];
 
-        // Extract animation config from revealed_item_ids array (stored as special object)
+        // Extract animation config from revealed_item_ids array (stored as special object or JSON string)
         let animConfig: {
             labelDelay?: number;
             barDuration?: number;
@@ -412,6 +412,7 @@ export async function getSettings(): Promise<ContestSettings> {
         } = {};
         const cleanRevealedIds: string[] = [];
         for (const entry of rawRevealedIds) {
+            // Case 1: Already an object (Supabase JSONB auto-parses)
             if (typeof entry === 'object' && entry !== null && (entry as any).__animConfig) {
                 const extracted = (entry as any).__animConfig;
                 animConfig = {
@@ -423,6 +424,24 @@ export async function getSettings(): Promise<ContestSettings> {
                     fontSize: extracted.fontSize || 'Medium',
                 };
             } else if (typeof entry === 'string') {
+                // Case 2: JSON-stringified config object
+                if (entry.startsWith('{')) {
+                    try {
+                        const parsed = JSON.parse(entry);
+                        if (parsed && parsed.__animConfig) {
+                            const extracted = parsed.__animConfig;
+                            animConfig = {
+                                labelDelay: parseInt(extracted.labelDelay) || 3000,
+                                barDuration: parseInt(extracted.barDuration) || 3000,
+                                sortDelay: parseInt(extracted.sortDelay) || 3000,
+                                sortDuration: parseInt(extracted.sortDuration) || 800,
+                                style: extracted.style || 'Standard',
+                                fontSize: extracted.fontSize || 'Medium',
+                            };
+                            continue; // Don't add to cleanRevealedIds
+                        }
+                    } catch { /* Not valid JSON, treat as normal ID */ }
+                }
                 cleanRevealedIds.push(entry);
             }
         }

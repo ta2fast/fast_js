@@ -152,6 +152,14 @@ export default function ResultsPage() {
             }
             if (settingsData.success) {
                 const newSettings = settingsData.data as ContestSettings;
+
+                // Debug Log for Settings Updates
+                if (settings?.animationStyle !== newSettings.animationStyle ||
+                    settings?.labelFontSize !== newSettings.labelFontSize) {
+                    console.log(`[Results] Settings Change Detected: Style=${newSettings.animationStyle}, Size=${newSettings.labelFontSize}`);
+                }
+
+                setSettings(newSettings);
                 const newIds = newSettings.revealedItemIds || [];
                 const newCount = newIds.length;
 
@@ -221,17 +229,23 @@ export default function ResultsPage() {
                             setSortingIds(newIds);
                         }
                     } else {
+                        // This else block means newCount > prevRevealedCount.current but no newlyAddedId was found.
+                        // This shouldn't happen if newIds are always unique and added one by one.
+                        // For safety, update states directly.
+                        console.warn("[Results] New items revealed but no single newly added ID found. Updating states directly.");
                         setBarRevealedIds(newIds);
                         setDisplayedIds(newIds);
                         setSortingIds(newIds);
                     }
                 } else if (!settings) {
                     // Initial load
+                    console.log("[Results] Initial load, setting all revealed IDs.");
                     setBarRevealedIds(newIds);
                     setDisplayedIds(newIds);
                     setSortingIds(newIds);
                 } else if (newCount < prevRevealedCount.current) {
                     // Items were removed — reset immediately
+                    console.log("[Results] Items removed, resetting all revealed IDs.");
                     if (barTimeoutRef.current) clearTimeout(barTimeoutRef.current);
                     if (displayTimeoutRef.current) clearTimeout(displayTimeoutRef.current);
                     if (sortTimeoutRef.current) clearTimeout(sortTimeoutRef.current);
@@ -369,33 +383,26 @@ export default function ResultsPage() {
                         )}
 
                         <motion.div
+                            key={settings.animationStyle} // Ensure re-render when style changes
                             variants={{
-                                Standard: {
-                                    initial: { opacity: 0, scale: 0.9 },
-                                    animate: { opacity: 1, scale: 1 },
-                                    exit: { opacity: 0, scale: 1.1, filter: 'blur(10px)' }
-                                },
-                                'Pop-in': {
-                                    initial: { opacity: 0, scale: 0 },
-                                    animate: { opacity: 1, scale: [0, 1.25, 1], rotate: [0, -5, 0] },
-                                    exit: { opacity: 0, scale: 2, filter: 'blur(20px)' }
-                                },
-                                Slide: {
-                                    initial: { x: '-100vw', opacity: 0, rotate: -10 },
-                                    animate: { x: 0, opacity: 1, rotate: 0 },
-                                    exit: { x: '100vw', opacity: 0, rotate: 10 }
-                                },
-                                Flash: {
-                                    initial: { opacity: 0, scale: 1.5 },
-                                    animate: {
-                                        opacity: 1,
-                                        scale: 1,
-                                        filter: ['brightness(1)', 'brightness(10)', 'brightness(1)'],
-                                        textShadow: ['0 0 0px #fff', '0 0 50px #fff', '0 0 10px #fff']
-                                    },
-                                    exit: { opacity: 0, scale: 0.8, filter: 'blur(10px)' }
-                                }
-                            }[settings.animationStyle || 'Standard']}
+                                initial: settings.animationStyle === 'Pop-in' ? { opacity: 0, scale: 0 } :
+                                    settings.animationStyle === 'Slide' ? { x: '-100vw', opacity: 0, rotate: -10 } :
+                                        settings.animationStyle === 'Flash' ? { opacity: 0, scale: 1.5 } :
+                                            { opacity: 0, scale: 0.9 },
+                                animate: settings.animationStyle === 'Pop-in' ? { opacity: 1, scale: [0, 1.25, 1], rotate: [0, -5, 0] } :
+                                    settings.animationStyle === 'Slide' ? { x: 0, opacity: 1, rotate: 0 } :
+                                        settings.animationStyle === 'Flash' ? {
+                                            opacity: 1,
+                                            scale: 1,
+                                            filter: ['brightness(1)', 'brightness(10)', 'brightness(1)'],
+                                            textShadow: ['0 0 0px #fff', '0 0 50px #fff', '0 0 10px #fff']
+                                        } :
+                                            { opacity: 1, scale: 1 },
+                                exit: settings.animationStyle === 'Pop-in' ? { opacity: 0, scale: 2, filter: 'blur(20px)' } :
+                                    settings.animationStyle === 'Slide' ? { x: '100vw', opacity: 0, rotate: 10 } :
+                                        settings.animationStyle === 'Flash' ? { opacity: 0, scale: 0.8, filter: 'blur(10px)' } :
+                                            { opacity: 0, scale: 1.1, filter: 'blur(10px)' }
+                            }}
                             initial="initial"
                             animate="animate"
                             exit="exit"
@@ -406,11 +413,11 @@ export default function ResultsPage() {
                             }
                             className={`
                                 font-black tracking-tighter leading-none text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.8)] text-center px-4
-                                ${settings.labelFontSize === 'Small' ? 'text-4xl md:text-6xl' :
-                                    settings.labelFontSize === 'Large' ? 'text-8xl md:text-[12vw]' :
-                                        settings.labelFontSize === 'Extra Large' ? 'text-[12vw] md:text-[18vw]' :
-                                            'text-6xl md:text-[8vw]' // Medium default
-                                }
+                                ${settings.labelFontSize === 'Small' ? 'text-4xl md:text-6xl' : ''}
+                                ${settings.labelFontSize === 'Medium' ? 'text-6xl md:text-[8vw]' : ''}
+                                ${settings.labelFontSize === 'Large' ? 'text-8xl md:text-[12vw]' : ''}
+                                ${settings.labelFontSize === 'Extra Large' ? 'text-[12vw] md:text-[18vw]' : ''}
+                                ${!settings.labelFontSize ? 'text-6xl md:text-[8vw]' : ''}
                             `}
                         >
                             {revealingItem}
