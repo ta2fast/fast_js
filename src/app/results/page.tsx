@@ -23,6 +23,14 @@ const OUTDOOR_COLORS = [
     '#33ff00', // Lime Punch
 ];
 
+// Animation Constants
+const LABEL_DISPLAY_TIME = 3000;      // ms
+const BAR_TRANSITION_SPEED = 2000;    // ms
+const SORT_DELAY_TIME = 3000;         // ms
+const SORT_TRANSITION_SPEED = 1500;    // ms
+const ANIMATION_STYLE = 'Pop-in';
+const LABEL_FONT_SIZE_CLASS = 'text-8xl md:text-[12vw]'; // Large
+
 // Count-up component for the total score
 function AnimatedCounter({ value, duration = 3000 }: { value: number; duration?: number }) {
     const [displayValue, setDisplayValue] = useState(0);
@@ -74,11 +82,9 @@ export default function ResultsPage() {
     // === Animation lock ===
     const isAnimatingRef = useRef(false);
 
-    // Ref to track how long we've been missing an expected animation trigger
-    const missedSyncCounterRef = useRef(0);
-
     // Ref to hold runAnimationSequence for polling fallback
     const runAnimationRef = useRef<((targetItemId: string) => Promise<void>) | null>(null);
+    const lastRevealedIdsRef = useRef<string[]>([]);
 
     // Track revealed items for initial load
     const initialLoadDone = useRef(false);
@@ -150,15 +156,13 @@ export default function ResultsPage() {
     // === Fetch data WITHOUT updating display (background sync) ===
     const fetchDataSilent = useCallback(async () => {
         try {
-            const [scoresRes, settingsRes, animRes] = await Promise.all([
+            const [scoresRes, settingsRes] = await Promise.all([
                 fetch('/api/scores', { cache: 'no-store' }),
                 fetch('/api/admin/settings', { cache: 'no-store' }),
-                fetch('/api/admin/animation-settings', { cache: 'no-store' })
             ]);
 
             const scoresData = await scoresRes.json();
             const settingsData = await settingsRes.json();
-            const animData = await animRes.json();
 
             if (!scoresData.success || !settingsData.success) {
                 console.warn('[Results] Partial data fetch failed');
@@ -167,27 +171,17 @@ export default function ResultsPage() {
 
             // Store latest data in refs (NOT in display state)
             latestResultsRef.current = scoresData.data;
-
-            // Merge contest settings with dedicated animation settings
-            const mergedSettings = settingsData.data as ContestSettings;
-            if (animData.success && animData.data) {
-                const s = animData.data as AnimationSettings;
-                mergedSettings.animationDelayLabelMs = Number(s.label_display_time) * 1000;
-                mergedSettings.animationBarDurationMs = Number(s.bar_transition_speed) * 1000;
-                mergedSettings.animationSortDelayMs = Number(s.sort_delay_time) * 1000;
-                mergedSettings.animationSortDurationMs = Number(s.sort_transition_speed) * 1000;
-                mergedSettings.animationStyle = s.animation_style;
-                mergedSettings.labelFontSize = s.label_font_size;
-            }
-            latestSettingsRef.current = mergedSettings;
+            const freshSettings = settingsData.data as ContestSettings;
+            latestSettingsRef.current = freshSettings;
 
             // On initial load, sync display state immediately
             if (!initialLoadDone.current) {
                 initialLoadDone.current = true;
                 setDisplayResults(scoresData.data);
-                setSettings(mergedSettings);
+                setSettings(freshSettings);
 
-                const existingIds = mergedSettings.revealedItemIds || [];
+                const existingIds = freshSettings.revealedItemIds || [];
+                lastRevealedIdsRef.current = existingIds;
                 setBarRevealedIds(existingIds);
                 setDisplayedIds(existingIds);
                 setSortingIds(existingIds);
@@ -197,63 +191,37 @@ export default function ResultsPage() {
             }
 
             // If NOT animating, sync display with latest data
-            // But do NOT auto-reveal new items - only update scores/results
             if (!isAnimatingRef.current) {
                 setDisplayResults(scoresData.data);
-                setSettings(mergedSettings);
+                setSettings(freshSettings);
 
-                // Check for item resets (items removed)
-                const currentRevealed = mergedSettings.revealedItemIds || [];
-                const displayRevealed = barRevealedIds;
-                const wasReset = currentRevealed.length < displayRevealed.length;
+                // Detect new reveals
+                const currentRevealed = freshSettings.revealedItemIds || [];
+                const lastRevealed = lastRevealedIdsRef.current;
 
-                // If there are newly revealed items, and we are NOT animating, and is_running is FALSE on the server,
-                // it might mean the animation trigger was missed or failed. 
-                // However, we need to be careful not to trigger this *right* as an animation is starting.
-                // We'll only auto-sync if we see this state persistently (using a ref in a real app, but here we just check if it's been a while since the last update)
-                // Actually, let's just make it simpler: if we see new items and is_running is false, we wait 1 cycle (3s)
-                // by tracking it in a ref.
-                const hasMissedNewItems = currentRevealed.length > displayRevealed.length && (!animData.success || !animData.data.is_running);
-
-                if (wasReset) {
+                // If items were reset (fewer items now)
+                if (currentRevealed.length < lastRevealed.length) {
                     console.log('[Results] Items reset detected');
                     setBarRevealedIds(currentRevealed);
                     setDisplayedIds(currentRevealed);
                     setSortingIds(currentRevealed);
-                    missedSyncCounterRef.current = 0;
-                } else if (hasMissedNewItems) {
-                    missedSyncCounterRef.current += 1;
-                    if (missedSyncCounterRef.current >= 2) { // Wait 2 polling cycles (~6 seconds) before forcing sync
-                        console.log('[Results] Missed animation trigger detected for 6+ seconds, auto-syncing');
-                        setBarRevealedIds(currentRevealed);
-                        setDisplayedIds(currentRevealed);
-                        setSortingIds(currentRevealed);
-                        missedSyncCounterRef.current = 0;
-                    }
-                } else {
-                    missedSyncCounterRef.current = 0;
+                    lastRevealedIdsRef.current = currentRevealed;
                 }
-            }
-
-            // Polling fallback: check is_running flag from animation settings
-            if (animData.success && animData.data) {
-                const animSettings = animData.data as AnimationSettings;
-                if (animSettings.is_running && !isAnimatingRef.current) {
-                    // Use target_item_id if available, otherwise fall back to last revealed item
-                    const targetId = animSettings.target_item_id
-                        || (mergedSettings.revealedItemIds && mergedSettings.revealedItemIds.length > 0
-                            ? mergedSettings.revealedItemIds[mergedSettings.revealedItemIds.length - 1]
-                            : null);
-                    if (targetId && runAnimationRef.current) {
-                        console.log(`[Results] Polling detected is_running=true, target: ${targetId}`);
-                        runAnimationRef.current(targetId);
+                // If new items were revealed
+                else if (currentRevealed.length > lastRevealed.length) {
+                    // Find the first new item that isn't in our last revealed list
+                    const newId = currentRevealed.find(id => !lastRevealed.includes(id));
+                    if (newId && runAnimationRef.current) {
+                        console.log(`[Results] New reveal detected: ${newId}. Triggering animation.`);
+                        runAnimationRef.current(newId);
                     }
+                    lastRevealedIdsRef.current = currentRevealed;
                 }
             }
         } catch (error) {
             console.error('[Results] fetchDataSilent error:', error);
         }
-    }, [barRevealedIds]);
+    }, []);
 
     // === Run the animation sequence ===
     const runAnimationSequence = useCallback(async (targetItemId: string) => {
@@ -266,41 +234,25 @@ export default function ResultsPage() {
         isAnimatingRef.current = true;
 
         try {
-            // Step 0: Force-fetch latest settings from DB
-            console.log('[Animation] Step 0: Fetching latest settings...');
-            const [settingsRes, animRes, scoresRes] = await Promise.all([
+            // Step 0: Force-fetch latest results from DB
+            console.log('[Animation] Step 0: Fetching latest results...');
+            const [settingsRes, scoresRes] = await Promise.all([
                 fetch('/api/admin/settings', { cache: 'no-store' }),
-                fetch('/api/admin/animation-settings', { cache: 'no-store' }),
                 fetch('/api/scores', { cache: 'no-store' }),
             ]);
 
             const settingsData = await settingsRes.json();
-            const animData = await animRes.json();
             const scoresData = await scoresRes.json();
 
-            if (!settingsData.success || !animData.success) {
-                console.error('[Animation] Failed to fetch latest settings');
+            if (!settingsData.success || !scoresData.success) {
+                console.error('[Animation] Failed to fetch latest data');
+                isAnimatingRef.current = false;
                 return;
             }
 
             const freshSettings = settingsData.data as ContestSettings;
-            const freshAnim = animData.data as AnimationSettings;
-
-            // Merge animation settings
-            freshSettings.animationDelayLabelMs = Number(freshAnim.label_display_time) * 1000;
-            freshSettings.animationBarDurationMs = Number(freshAnim.bar_transition_speed) * 1000;
-            freshSettings.animationSortDelayMs = Number(freshAnim.sort_delay_time) * 1000;
-            freshSettings.animationSortDurationMs = Number(freshAnim.sort_transition_speed) * 1000;
-            freshSettings.animationStyle = freshAnim.animation_style;
-            freshSettings.labelFontSize = freshAnim.label_font_size;
-
-            // Update settings state with fresh values
             setSettings(freshSettings);
-
-            // Update results with latest scores
-            if (scoresData.success) {
-                setDisplayResults(scoresData.data);
-            }
+            setDisplayResults(scoresData.data);
 
             const newRevealedIds = freshSettings.revealedItemIds || [];
 
@@ -319,18 +271,19 @@ export default function ResultsPage() {
                 setBarRevealedIds(newRevealedIds);
                 setDisplayedIds(newRevealedIds);
                 setSortingIds(newRevealedIds);
+                isAnimatingRef.current = false;
                 return;
             }
 
-            const labelMs = Number(freshSettings.animationDelayLabelMs) || 3000;
-            const barMs = Number(freshSettings.animationBarDurationMs) || 3000;
-            const sortDelayMs = Number(freshSettings.animationSortDelayMs) || 3000;
-            const sortDurationMs = Number(freshSettings.animationSortDurationMs) || 800;
+            const labelMs = LABEL_DISPLAY_TIME;
+            const barMs = BAR_TRANSITION_SPEED;
+            const sortDelayMs = SORT_DELAY_TIME;
+            const sortDurationMs = SORT_TRANSITION_SPEED;
 
             setAnimationSortDuration(sortDurationMs / 1000);
 
             console.log(`[Animation] Starting sequence for: ${itemName}`);
-            console.log(`[Animation] Timing: label=${labelMs}ms, bar=${barMs}ms, sortDelay=${sortDelayMs}ms, sortDuration=${sortDurationMs}ms`);
+            console.log(`[Animation] Timing (Hard-coded): label=${labelMs}ms, bar=${barMs}ms, sortDelay=${sortDelayMs}ms, sortDuration=${sortDurationMs}ms`);
 
             // Compute the "before" revealed IDs (without the target item)
             const beforeIds = newRevealedIds.filter(id => id !== targetItemId);
@@ -371,14 +324,6 @@ export default function ResultsPage() {
             console.log('[Animation] Sequence Complete');
             setActiveHighlightItem(null);
 
-            // Reset the is_running flag
-            console.log('[Animation] Resetting is_running flag...');
-            await fetch('/api/admin/animation-settings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ is_running: false, target_item_id: null }),
-            });
-
         } catch (err) {
             console.error('[Animation] Sequence Error:', err);
         } finally {
@@ -402,36 +347,10 @@ export default function ResultsPage() {
         fetchDataSilent();
         const interval = setInterval(fetchDataSilent, 3000); // 3s background sync
 
-        // Real-time subscription for animation trigger
-        const channel = supabase
-            .channel('realtime:animation_settings')
-            .on('postgres_changes', {
-                event: 'UPDATE',
-                schema: 'public',
-                table: 'animation_settings',
-                filter: 'id=eq.1'
-            }, (payload) => {
-                console.log('[Results] Real-time Animation Settings Update:', payload.new);
-                const newData = payload.new as AnimationSettings;
-
-                // Check for animation trigger
-                if (newData.is_running && !isAnimatingRef.current) {
-                    const targetId = newData.target_item_id || null;
-                    if (targetId) {
-                        console.log(`[Results] Animation trigger detected! Item: ${targetId}`);
-                        runAnimationSequence(targetId);
-                    } else {
-                        console.log('[Results] is_running=true but no target_item_id, will be handled by polling');
-                    }
-                }
-            })
-            .subscribe();
-
         return () => {
             clearInterval(interval);
-            supabase.removeChannel(channel);
         };
-    }, []);
+    }, [fetchDataSilent]);
 
     const processedRankings = useMemo(() => {
         if (!settings || displayResults.length === 0) return [];
@@ -530,52 +449,38 @@ export default function ResultsPage() {
                     <motion.div
                         className="fixed inset-0 z-[60] flex flex-col items-center justify-center pointer-events-none"
                     >
-                        {/* Flash Effect Helper */}
-                        {settings.animationStyle === 'Flash' && (
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: [0, 1, 0] }}
-                                transition={{ duration: 0.4, times: [0, 0.2, 1] }}
-                                className="fixed inset-0 bg-white z-[61]"
-                            />
-                        )}
-
                         <motion.div
-                            key={settings.animationStyle} // Ensure re-render when style changes
+                            key={ANIMATION_STYLE} // Ensure re-render when style changes
                             variants={{
-                                initial: settings.animationStyle === 'Pop-in' ? { opacity: 0, scale: 0 } :
-                                    settings.animationStyle === 'Slide' ? { x: '-100vw', opacity: 0, rotate: -10 } :
-                                        settings.animationStyle === 'Flash' ? { opacity: 0, scale: 1.5 } :
+                                initial: ANIMATION_STYLE === 'Pop-in' ? { opacity: 0, scale: 0 } :
+                                    ANIMATION_STYLE === 'Slide' ? { x: '-100vw', opacity: 0, rotate: -10 } :
+                                        ANIMATION_STYLE === 'Flash' ? { opacity: 0, scale: 1.5 } :
                                             { opacity: 0, scale: 0.9 },
-                                animate: settings.animationStyle === 'Pop-in' ? { opacity: 1, scale: [0, 1.25, 1], rotate: [0, -5, 0] } :
-                                    settings.animationStyle === 'Slide' ? { x: 0, opacity: 1, rotate: 0 } :
-                                        settings.animationStyle === 'Flash' ? {
+                                animate: ANIMATION_STYLE === 'Pop-in' ? { opacity: 1, scale: [0, 1.25, 1], rotate: [0, -5, 0] } :
+                                    ANIMATION_STYLE === 'Slide' ? { x: 0, opacity: 1, rotate: 0 } :
+                                        ANIMATION_STYLE === 'Flash' ? {
                                             opacity: 1,
                                             scale: 1,
                                             filter: ['brightness(1)', 'brightness(10)', 'brightness(1)'],
                                             textShadow: ['0 0 0px #fff', '0 0 50px #fff', '0 0 10px #fff']
                                         } :
                                             { opacity: 1, scale: 1 },
-                                exit: settings.animationStyle === 'Pop-in' ? { opacity: 0, scale: 2, filter: 'blur(20px)' } :
-                                    settings.animationStyle === 'Slide' ? { x: '100vw', opacity: 0, rotate: 10 } :
-                                        settings.animationStyle === 'Flash' ? { opacity: 0, scale: 0.8, filter: 'blur(10px)' } :
+                                exit: ANIMATION_STYLE === 'Pop-in' ? { opacity: 0, scale: 2, filter: 'blur(20px)' } :
+                                    ANIMATION_STYLE === 'Slide' ? { x: '100vw', opacity: 0, rotate: 10 } :
+                                        ANIMATION_STYLE === 'Flash' ? { opacity: 0, scale: 0.8, filter: 'blur(10px)' } :
                                             { opacity: 0, scale: 1.1, filter: 'blur(10px)' }
                             }}
                             initial="initial"
                             animate="animate"
                             exit="exit"
                             transition={
-                                settings.animationStyle === 'Slide'
+                                ANIMATION_STYLE === 'Slide'
                                     ? { type: 'spring', damping: 12, stiffness: 90 }
                                     : { duration: 0.5 }
                             }
                             className={`
                                 font-black tracking-tighter leading-none text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.8)] text-center px-4
-                                ${settings.labelFontSize === 'Small' ? 'text-4xl md:text-6xl' : ''}
-                                ${settings.labelFontSize === 'Medium' ? 'text-6xl md:text-[8vw]' : ''}
-                                ${settings.labelFontSize === 'Large' ? 'text-8xl md:text-[12vw]' : ''}
-                                ${settings.labelFontSize === 'Extra Large' ? 'text-[12vw] md:text-[18vw]' : ''}
-                                ${!settings.labelFontSize ? 'text-6xl md:text-[8vw]' : ''}
+                                ${LABEL_FONT_SIZE_CLASS}
                             `}
                         >
                             {revealingItem}
@@ -663,7 +568,7 @@ export default function ResultsPage() {
                                         }}
                                         transition={{
                                             type: 'tween',
-                                            duration: (settings.animationBarDurationMs ?? 3000) / 1000,
+                                            duration: BAR_TRANSITION_SPEED / 1000,
                                             ease: 'easeOut'
                                         }}
                                         style={{
@@ -690,7 +595,7 @@ export default function ResultsPage() {
                                 <div className={`${index < 3 ? 'text-3xl md:text-5xl' : 'text-2xl md:text-4xl'} font-bold tracking-tight text-[#fffa00] drop-shadow-[0_0_10px_rgba(255,250,0,0.5)]`}>
                                     <AnimatedCounter
                                         value={res.currentDisplayedScore}
-                                        duration={settings.animationBarDurationMs ?? 3000}
+                                        duration={BAR_TRANSITION_SPEED}
                                     />
                                 </div>
                             </div>

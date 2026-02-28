@@ -8,12 +8,6 @@ export default function ResultsControlPage() {
     const [settings, setSettings] = useState<ContestSettings | null>(null);
     const [loading, setLoading] = useState(true);
     const [updating, setUpdating] = useState(false);
-    const [labelDelaySec, setLabelDelaySec] = useState(3);
-    const [barDurationSec, setBarDurationSec] = useState(3);
-    const [sortDelaySec, setSortDelaySec] = useState(3);
-    const [sortDurationSec, setSortDurationSec] = useState(0.8);
-    const [animationStyle, setAnimationStyle] = useState<'Standard' | 'Pop-in' | 'Slide' | 'Flash'>('Standard');
-    const [labelFontSize, setLabelFontSize] = useState<'Small' | 'Medium' | 'Large' | 'Extra Large'>('Medium');
 
     useEffect(() => {
         fetchSettings();
@@ -21,20 +15,6 @@ export default function ResultsControlPage() {
 
     const fetchSettings = async () => {
         try {
-            // Fetch animation settings from dedicated table
-            const animRes = await fetch('/api/admin/animation-settings');
-            const animData: ApiResponse<AnimationSettings> = await animRes.json();
-
-            if (animData.success && animData.data) {
-                const s = animData.data;
-                setLabelDelaySec(Number(s.label_display_time));
-                setBarDurationSec(Number(s.bar_transition_speed));
-                setSortDelaySec(Number(s.sort_delay_time));
-                setSortDurationSec(Number(s.sort_transition_speed));
-                setAnimationStyle(s.animation_style || 'Standard');
-                setLabelFontSize(s.label_font_size || 'Medium');
-            }
-
             // Fetch general contest settings (for revealed items)
             const res = await fetch('/api/admin/settings');
             const data: ApiResponse<ContestSettings> = await res.json();
@@ -51,11 +31,11 @@ export default function ResultsControlPage() {
         }
     };
 
-    const updateReveals = async (newRevealedIds: string[], triggerItemId?: string) => {
+    const updateReveals = async (newRevealedIds: string[]) => {
         if (!settings) return;
         setUpdating(true);
         try {
-            // Step 1: Update the revealed item IDs (data sync)
+            // Update the revealed item IDs (data sync)
             const res = await fetch('/api/admin/settings', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -66,19 +46,6 @@ export default function ResultsControlPage() {
                 setSettings(data.data);
             } else {
                 alert(`更新に失敗しました: ${data.error || '不明なエラー'}`);
-                return;
-            }
-
-            // Step 2: If a trigger item is specified, send animation trigger
-            if (triggerItemId) {
-                await fetch('/api/admin/animation-settings', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        is_running: true,
-                        target_item_id: triggerItemId,
-                    }),
-                });
             }
         } catch (error) {
             console.error('Failed to update revealed items:', error);
@@ -88,44 +55,13 @@ export default function ResultsControlPage() {
         }
     };
 
-    async function updateAnimationDelays(labelS: number, barS: number, sortDelayS: number, sortDurationS: number, style: string, size: string) {
-        setUpdating(true);
-        try {
-            const res = await fetch('/api/admin/animation-settings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    label_display_time: labelS,
-                    bar_transition_speed: barS,
-                    sort_delay_time: sortDelayS,
-                    sort_transition_speed: sortDurationS,
-                    animation_style: style,
-                    label_font_size: size,
-                }),
-            });
-            const data: ApiResponse<AnimationSettings> = await res.json();
-            if (data.success) {
-                alert('アニメーション設定を保存しました。');
-            } else {
-                alert(`更新に失敗しました: ${data.error || '不明なエラー'}`);
-            }
-        } catch (error) {
-            console.error('Failed to update animation settings:', error);
-            alert('通信エラーが発生しました。');
-        } finally {
-            setUpdating(false);
-        }
-    }
-
     const toggleItem = (itemId: string) => {
         if (!settings) return;
         const current = settings.revealedItemIds || [];
-        const isAdding = !current.includes(itemId);
-        const next = isAdding
-            ? [...current, itemId]
-            : current.filter(id => id !== itemId);
-        // Only trigger animation when adding (revealing) an item
-        updateReveals(next, isAdding ? itemId : undefined);
+        const next = current.includes(itemId)
+            ? current.filter(id => id !== itemId)
+            : [...current, itemId];
+        updateReveals(next);
     };
 
     const revealAll = () => {
@@ -176,36 +112,9 @@ export default function ResultsControlPage() {
 
                         <div className="flex flex-wrap gap-4 mb-8">
                             <button
-                                onClick={async () => {
-                                    if (!settings) return;
-                                    setUpdating(true);
-                                    try {
-                                        const revealedIds = settings.revealedItemIds || [];
-                                        const lastItemId = revealedIds.length > 0 ? revealedIds[revealedIds.length - 1] : null;
-                                        await fetch('/api/admin/animation-settings', {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({
-                                                is_running: true,
-                                                target_item_id: lastItemId,
-                                            }),
-                                        });
-                                        alert('表示を開始します');
-                                    } catch (e) {
-                                        alert('エラーが発生しました');
-                                    } finally {
-                                        setUpdating(false);
-                                    }
-                                }}
-                                disabled={updating}
-                                className="btn btn-primary flex-1 shadow-lg shadow-[var(--secondary)]/20"
-                            >
-                                🎬 表示開始（確定実行）
-                            </button>
-                            <button
                                 onClick={revealAll}
                                 disabled={updating}
-                                className="btn btn-outline flex-1 border-dashed"
+                                className="btn btn-primary flex-1 shadow-lg shadow-[var(--secondary)]/20"
                             >
                                 全て表示
                             </button>
@@ -269,132 +178,6 @@ export default function ResultsControlPage() {
                         </div>
                     </section>
 
-                    {/* Animation Timing Settings */}
-                    <section className="card">
-                        <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-                            <span className="w-2 h-6 bg-amber-500 rounded-full"></span>
-                            ⏱ アニメーションタイミング設定
-                        </h2>
-                        {/* 演出設定 */}
-                        <div className="bg-black/40 p-4 rounded-xl border border-white/10 mb-6">
-                            <h3 className="text-sm font-bold text-zinc-500 mb-4 tracking-widest uppercase">演出カスタマイズ</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-zinc-400 mb-2">演出スタイル</label>
-                                    <select
-                                        value={animationStyle}
-                                        onChange={(e) => {
-                                            const val = e.target.value as any;
-                                            setAnimationStyle(val);
-                                            updateAnimationDelays(labelDelaySec, barDurationSec, sortDelaySec, sortDurationSec, val, labelFontSize);
-                                        }}
-                                        className="w-full bg-zinc-800 border-none rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#fffa00]"
-                                    >
-                                        <option value="Standard">Standard (Fade)</option>
-                                        <option value="Pop-in">Pop-in (Bounce)</option>
-                                        <option value="Slide">Slide (From Left)</option>
-                                        <option value="Flash">Flash (Impact)</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-zinc-400 mb-2">文字サイズ</label>
-                                    <select
-                                        value={labelFontSize}
-                                        onChange={(e) => {
-                                            const val = e.target.value as any;
-                                            setLabelFontSize(val);
-                                            updateAnimationDelays(labelDelaySec, barDurationSec, sortDelaySec, sortDurationSec, animationStyle, val);
-                                        }}
-                                        className="w-full bg-zinc-800 border-none rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#fffa00]"
-                                    >
-                                        <option value="Small">Small</option>
-                                        <option value="Medium">Medium</option>
-                                        <option value="Large">Large</option>
-                                        <option value="Extra Large">Extra Large</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div>
-                                <label className="block text-xs font-bold text-zinc-400 mb-2">①項目表示 (秒)</label>
-                                <select
-                                    value={labelDelaySec}
-                                    onChange={(e) => {
-                                        const val = parseFloat(e.target.value);
-                                        setLabelDelaySec(val);
-                                        updateAnimationDelays(val, barDurationSec, sortDelaySec, sortDurationSec, animationStyle, labelFontSize);
-                                    }}
-                                    className="w-full bg-zinc-800 border-none rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#fffa00]"
-                                >
-                                    {[0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map(v => (
-                                        <option key={v} value={v}>{v}s</option>
-                                    ))}
-                                </select>
-                                <p className="text-[10px] text-[var(--text-muted)] mt-1">
-                                    項目ラベルが単独で表示される時間
-                                </p>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-zinc-400 mb-2">②バー伸長 (秒)</label>
-                                <select
-                                    value={barDurationSec}
-                                    onChange={(e) => {
-                                        const val = parseFloat(e.target.value);
-                                        setBarDurationSec(val);
-                                        updateAnimationDelays(labelDelaySec, val, sortDelaySec, sortDurationSec, animationStyle, labelFontSize);
-                                    }}
-                                    className="w-full bg-zinc-800 border-none rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#fffa00]"
-                                >
-                                    {[0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 6, 7, 8, 9, 10].map(v => (
-                                        <option key={v} value={v}>{v}s</option>
-                                    ))}
-                                </select>
-                                <p className="text-[10px] text-[var(--text-muted)] mt-1">
-                                    0から確定値までバーが伸びる時間
-                                </p>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-zinc-400 mb-2">③整理待ち (秒)</label>
-                                <select
-                                    value={sortDelaySec}
-                                    onChange={(e) => {
-                                        const val = parseFloat(e.target.value);
-                                        setSortDelaySec(val);
-                                        updateAnimationDelays(labelDelaySec, barDurationSec, val, sortDurationSec, animationStyle, labelFontSize);
-                                    }}
-                                    className="w-full bg-zinc-800 border-none rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#fffa00]"
-                                >
-                                    {[0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map(v => (
-                                        <option key={v} value={v}>{v}s</option>
-                                    ))}
-                                </select>
-                                <p className="text-[10px] text-[var(--text-muted)] mt-1">
-                                    伸びきった後の静止（余韻）時間
-                                </p>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-zinc-400 mb-2">④並替速さ (秒)</label>
-                                <select
-                                    value={sortDurationSec}
-                                    onChange={(e) => {
-                                        const val = parseFloat(e.target.value);
-                                        setSortDurationSec(val);
-                                        updateAnimationDelays(labelDelaySec, barDurationSec, sortDelaySec, val, animationStyle, labelFontSize);
-                                    }}
-                                    className="w-full bg-zinc-800 border-none rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#fffa00]"
-                                >
-                                    {[0, 0.5, 0.8, 1, 1.5, 2, 2.5, 3].map(v => (
-                                        <option key={v} value={v}>{v}s</option>
-                                    ))}
-                                </select>
-                                <p className="text-[10px] text-[var(--text-muted)] mt-1">
-                                    順位が入れ替わる動き自体の速さ
-                                </p>
-                            </div>
-                        </div>
-                    </section>
 
                     <aside className="p-4 bg-[var(--surface-light)] rounded-xl border border-[var(--surface-border)]">
                         <h3 className="font-bold mb-2 flex items-center gap-2">
