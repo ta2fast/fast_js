@@ -360,17 +360,17 @@ export default function ResultsPage() {
                                 layout: { type: 'spring', damping: 25, stiffness: 120, mass: 0.8 },
                                 opacity: { duration: 0.3 }
                             }}
-                            className={`relative flex items-center gap-4 ${index < 3 ? 'flex-[1.5] py-4 md:py-6' : 'flex-1 py-1 md:py-2'} min-h-0 bg-zinc-900/40 rounded-lg pr-4 border-l-[12px] ${index < 3 ? 'shadow-[0_0_20px_rgba(255,250,0,0.2)]' : ''}`}
+                            className={`relative flex items-center gap-4 ${index < 3 ? 'flex-[1.3] py-2 md:py-3' : 'flex-1 py-1 md:py-2'} min-h-0 bg-zinc-900/40 rounded-lg pr-4 border-l-[12px] ${index < 3 ? 'shadow-[0_0_20px_rgba(255,250,0,0.2)]' : ''}`}
                             style={{
                                 borderLeftColor: index === 0 ? '#fffa00' : index === 1 ? '#e2e8f0' : index === 2 ? '#b45309' : '#333'
                             }}
                         >
                             {/* Rank & Name */}
-                            <div className={`${index < 3 ? 'w-[200px] md:w-[400px]' : 'w-[150px] md:w-[300px]'} flex items-center gap-4 shrink-0 pl-4`}>
+                            <div className={`${index < 3 ? 'w-[180px] md:w-[340px]' : 'w-[140px] md:w-[260px]'} flex items-center gap-3 shrink-0 pl-4`}>
                                 <motion.div
                                     animate={index === 0 ? { scale: [1, 1.1, 1] } : {}}
                                     transition={index === 0 ? { repeat: Infinity, duration: 2 } : {}}
-                                    className={`${index < 3 ? 'text-5xl md:text-8xl w-16 md:w-32' : 'text-3xl md:text-4xl w-12 md:w-20'} font-bold shrink-0 ${index === 0 ? 'text-[#fffa00] drop-shadow-[0_0_10px_rgba(255,250,0,0.8)]' :
+                                    className={`${index < 3 ? 'text-4xl md:text-6xl w-14 md:w-24' : 'text-3xl md:text-4xl w-10 md:w-16'} font-bold shrink-0 ${index === 0 ? 'text-[#fffa00] drop-shadow-[0_0_10px_rgba(255,250,0,0.8)]' :
                                         index === 1 ? 'text-[#e2e8f0] drop-shadow-[0_0_10px_rgba(226,232,240,0.8)]' :
                                             index === 2 ? 'text-[#b45309] drop-shadow-[0_0_10px_rgba(180,83,9,0.8)]' :
                                                 'text-zinc-600'
@@ -379,12 +379,12 @@ export default function ResultsPage() {
                                     {index + 1}
                                 </motion.div>
                                 <div className="flex flex-col min-w-0">
-                                    <span className={`${index < 3 ? 'text-2xl md:text-5xl' : 'text-xl md:text-2xl'} text-white truncate font-black tracking-tight leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]`}>{res.rider.riderName}</span>
+                                    <span className={`${index < 3 ? 'text-xl md:text-3xl' : 'text-lg md:text-xl'} text-white truncate font-black tracking-tight leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]`}>{res.rider.riderName}</span>
                                 </div>
                             </div>
 
                             {/* Stacked Bar Container */}
-                            <div className={`flex-1 bg-black ${index < 3 ? 'h-[60%] md:h-24' : 'h-[40%] md:h-12'} relative overflow-hidden flex ring-4 ring-zinc-800 shadow-[0_0_30px_rgba(0,0,0,0.8)]`}>
+                            <div className="flex-1 bg-black h-[50%] md:h-16 relative overflow-hidden flex ring-4 ring-zinc-800 shadow-[0_0_30px_rgba(0,0,0,0.8)]">
                                 {res.allItems.map((item) => (
                                     <motion.div
                                         key={item.id}
@@ -413,8 +413,8 @@ export default function ResultsPage() {
                                 ))}
                             </div>
 
-                            <div className={`${index < 3 ? 'w-24 md:w-56' : 'w-20 md:w-40'} text-right shrink-0`}>
-                                <div className={`${index < 3 ? 'text-4xl md:text-8xl' : 'text-2xl md:text-4xl'} font-bold tracking-tight text-[#fffa00] drop-shadow-[0_0_10px_rgba(255,250,0,0.5)]`}>
+                            <div className={`${index < 3 ? 'w-24 md:w-44' : 'w-20 md:w-36'} text-right shrink-0`}>
+                                <div className={`${index < 3 ? 'text-3xl md:text-5xl' : 'text-2xl md:text-4xl'} font-bold tracking-tight text-[#fffa00] drop-shadow-[0_0_10px_rgba(255,250,0,0.5)]`}>
                                     <AnimatedCounter value={res.currentDisplayedScore} />
                                 </div>
                             </div>
