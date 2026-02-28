@@ -202,6 +202,7 @@ export default function ResultsPage() {
 
             const labelMs = LABEL_DISPLAY_TIME;
             const barMs = BAR_TRANSITION_SPEED;
+            const sortDelayMs = SORT_DELAY_TIME;
             const sortDurationMs = SORT_TRANSITION_SPEED;
 
             if (eventType === 'reveal_item') {
@@ -217,11 +218,24 @@ export default function ResultsPage() {
                 await wait(500); // small pause after label disappears
 
                 // Extend only this specific bar and update score
-                setBarRevealedIds(prev => [...new Set([...prev, itemId])]);
-                setDisplayedIds(prev => [...new Set([...prev, itemId])]);
+                const newRevealedIds = [...new Set([...barRevealedIds, itemId])];
+                setBarRevealedIds(newRevealedIds);
+                setDisplayedIds(newRevealedIds);
 
                 await wait(barMs);
                 setActiveHighlightItem(null);
+
+                // --- 自動順位入れ替え (Auto Sort) ---
+                console.log(`[Animation] Auto-Sort Wait (${sortDelayMs}ms)`);
+                await wait(sortDelayMs);
+
+                // 順位確定前に最新の合計点を再取得・計算させる
+                await fetchDataSilent();
+
+                console.log(`[Animation] Auto-Sorting Ranks (${sortDurationMs}ms)`);
+                setAnimationSortDuration(sortDurationMs / 1000);
+                setSortingIds(newRevealedIds);
+                await wait(sortDurationMs);
             }
             else if (eventType === 'sort_ranks') {
                 console.log(`[Animation] Sorting Ranks`);
