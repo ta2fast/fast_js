@@ -8,6 +8,8 @@ export default function ResultsControlPage() {
     const [settings, setSettings] = useState<ContestSettings | null>(null);
     const [loading, setLoading] = useState(true);
     const [updating, setUpdating] = useState(false);
+    const [scoreDelaySec, setScoreDelaySec] = useState(2);
+    const [rankDelaySec, setRankDelaySec] = useState(2);
 
     useEffect(() => {
         fetchSettings();
@@ -19,6 +21,8 @@ export default function ResultsControlPage() {
             const data: ApiResponse<ContestSettings> = await res.json();
             if (data.success && data.data) {
                 setSettings(data.data);
+                setScoreDelaySec((data.data.animationDelayScoreMs ?? 2000) / 1000);
+                setRankDelaySec((data.data.animationDelayRankMs ?? 2000) / 1000);
             } else {
                 alert(`設定の読み込みに失敗しました: ${data.error || '不明なエラー'}`);
             }
@@ -48,6 +52,29 @@ export default function ResultsControlPage() {
         } catch (error) {
             console.error('Failed to update revealed items:', error);
             alert('通信エラーが発生しました。');
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    const updateAnimationDelays = async (newScoreDelaySec: number, newRankDelaySec: number) => {
+        if (!settings) return;
+        setUpdating(true);
+        try {
+            const res = await fetch('/api/admin/settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    animationDelayScoreMs: Math.round(newScoreDelaySec * 1000),
+                    animationDelayRankMs: Math.round(newRankDelaySec * 1000),
+                }),
+            });
+            const data: ApiResponse<ContestSettings> = await res.json();
+            if (data.success && data.data) {
+                setSettings(data.data);
+            }
+        } catch (error) {
+            console.error('Failed to update animation delays:', error);
         } finally {
             setUpdating(false);
         }
@@ -176,6 +203,62 @@ export default function ResultsControlPage() {
                         </div>
                     </section>
 
+                    {/* Animation Timing Settings */}
+                    <section className="card">
+                        <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+                            <span className="w-2 h-6 bg-amber-500 rounded-full"></span>
+                            ⏱ アニメーションタイミング設定
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-sm text-[var(--text-muted)] mb-2">
+                                    項目名表示 → 点数反映
+                                </label>
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="number"
+                                        value={scoreDelaySec}
+                                        onChange={(e) => {
+                                            const val = parseFloat(e.target.value) || 0;
+                                            setScoreDelaySec(val);
+                                        }}
+                                        onBlur={() => updateAnimationDelays(scoreDelaySec, rankDelaySec)}
+                                        className="input flex-1"
+                                        min="0"
+                                        step="0.5"
+                                    />
+                                    <span className="text-lg font-bold text-[var(--text-muted)]">秒</span>
+                                </div>
+                                <p className="text-xs text-[var(--text-muted)] mt-1">
+                                    項目名が表示されてからスコアバーが伸び始めるまでの待ち時間
+                                </p>
+                            </div>
+                            <div>
+                                <label className="block text-sm text-[var(--text-muted)] mb-2">
+                                    点数反映 → 順位変更
+                                </label>
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="number"
+                                        value={rankDelaySec}
+                                        onChange={(e) => {
+                                            const val = parseFloat(e.target.value) || 0;
+                                            setRankDelaySec(val);
+                                        }}
+                                        onBlur={() => updateAnimationDelays(scoreDelaySec, rankDelaySec)}
+                                        className="input flex-1"
+                                        min="0"
+                                        step="0.5"
+                                    />
+                                    <span className="text-lg font-bold text-[var(--text-muted)]">秒</span>
+                                </div>
+                                <p className="text-xs text-[var(--text-muted)] mt-1">
+                                    スコアバーが伸びてから順位が入れ替わるまでの待ち時間
+                                </p>
+                            </div>
+                        </div>
+                    </section>
+
                     <aside className="p-4 bg-[var(--surface-light)] rounded-xl border border-[var(--surface-border)]">
                         <h3 className="font-bold mb-2 flex items-center gap-2">
                             <span className="text-amber-500">💡</span> 使い方
@@ -184,6 +267,7 @@ export default function ResultsControlPage() {
                             <li>この画面のボタンをクリックすると、公開中のリザルト画面に即座に反映されます。</li>
                             <li>会場のプロジェクター等でリザルト画面を投影しながら操作してください。</li>
                             <li>項目は一つずつ順番に表示していく演出がおすすめです。</li>
+                            <li>アニメーションタイミングは秒単位で調整できます。値を変更後、フォーカスを外すと保存されます。</li>
                         </ul>
                     </aside>
                 </div>

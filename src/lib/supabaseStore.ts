@@ -399,6 +399,19 @@ export async function getSettings(): Promise<ContestSettings> {
             return { ...DEFAULT_CONTEST_SETTINGS };
         }
 
+        const rawRevealedIds = data.revealed_item_ids || [];
+
+        // Extract animation config from revealed_item_ids array (stored as special object)
+        let animConfig: { scoreDelayMs?: number; rankDelayMs?: number } = {};
+        const cleanRevealedIds: string[] = [];
+        for (const entry of rawRevealedIds) {
+            if (typeof entry === 'object' && entry !== null && entry.__animConfig) {
+                animConfig = entry;
+            } else if (typeof entry === 'string') {
+                cleanRevealedIds.push(entry);
+            }
+        }
+
         return {
             id: data.id,
             evaluationItems: data.evaluation_items as EvaluationItem[],
@@ -412,9 +425,9 @@ export async function getSettings(): Promise<ContestSettings> {
             currentRiderId: data.current_rider_id,
             contestName: data.contest_name,
             contestDate: data.contest_date,
-            revealedItemIds: data.revealed_item_ids || [],
-            animationDelayScoreMs: data.animation_delay_score_ms ?? DEFAULT_CONTEST_SETTINGS.animationDelayScoreMs,
-            animationDelayRankMs: data.animation_delay_rank_ms ?? DEFAULT_CONTEST_SETTINGS.animationDelayRankMs,
+            revealedItemIds: cleanRevealedIds,
+            animationDelayScoreMs: animConfig.scoreDelayMs ?? DEFAULT_CONTEST_SETTINGS.animationDelayScoreMs,
+            animationDelayRankMs: animConfig.rankDelayMs ?? DEFAULT_CONTEST_SETTINGS.animationDelayRankMs,
         };
     } catch (err) {
         console.error('Failed to fetch settings:', err);
@@ -430,6 +443,12 @@ export async function updateSettings(updates: Partial<ContestSettings>): Promise
         // 更新内容をマージ
         const newSettings = { ...current, ...updates };
 
+        // Embed animation config as a special object inside revealed_item_ids
+        const revealedWithConfig: unknown[] = [
+            ...newSettings.revealedItemIds,
+            { __animConfig: true, scoreDelayMs: newSettings.animationDelayScoreMs, rankDelayMs: newSettings.animationDelayRankMs }
+        ];
+
         const upsertData: Record<string, unknown> = {
             id: 'default',
             evaluation_items: newSettings.evaluationItems,
@@ -443,9 +462,7 @@ export async function updateSettings(updates: Partial<ContestSettings>): Promise
             current_rider_id: newSettings.currentRiderId,
             contest_name: newSettings.contestName,
             contest_date: newSettings.contestDate,
-            revealed_item_ids: newSettings.revealedItemIds,
-            animation_delay_score_ms: newSettings.animationDelayScoreMs,
-            animation_delay_rank_ms: newSettings.animationDelayRankMs,
+            revealed_item_ids: revealedWithConfig,
             updated_at: new Date().toISOString(),
         };
 
