@@ -529,7 +529,8 @@ export async function getAnimationSettings(): Promise<AnimationSettings> {
                     sort_delay_time: 3.0,
                     sort_transition_speed: 0.8,
                     animation_style: 'Standard',
-                    label_font_size: 'Medium'
+                    label_font_size: 'Medium',
+                    is_running: false
                 }])
                 .select()
                 .single();

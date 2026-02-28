@@ -177,6 +177,7 @@ export interface AnimationSettings {
   sort_transition_speed: number;
   animation_style: 'Standard' | 'Pop-in' | 'Slide' | 'Flash';
   label_font_size: 'Small' | 'Medium' | 'Large' | 'Extra Large';
+  is_running: boolean;
   updated_at: string;
 }
 
@@ -188,5 +189,6 @@ export const DEFAULT_ANIMATION_SETTINGS: AnimationSettings = {
   sort_transition_speed: 0.8,
   animation_style: 'Standard',
   label_font_size: 'Medium',
+  is_running: false,
   updated_at: new Date().toISOString(),
 };

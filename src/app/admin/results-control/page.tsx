@@ -160,6 +160,27 @@ export default function ResultsControlPage() {
 
                         <div className="flex flex-wrap gap-4 mb-8">
                             <button
+                                onClick={async () => {
+                                    setUpdating(true);
+                                    try {
+                                        await fetch('/api/admin/animation-settings', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ is_running: true }),
+                                        });
+                                        alert('表示を開始します');
+                                    } catch (e) {
+                                        alert('エラーが発生しました');
+                                    } finally {
+                                        setUpdating(false);
+                                    }
+                                }}
+                                disabled={updating}
+                                className="btn btn-primary flex-1 shadow-lg shadow-[var(--secondary)]/20"
+                            >
+                                🎬 表示開始（確定実行）
+                            </button>
+                            <button
                                 onClick={revealAll}
                                 disabled={updating}
                                 className="btn btn-outline flex-1 border-dashed"

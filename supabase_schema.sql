@@ -106,13 +106,23 @@ INSERT INTO contest_settings (id, evaluation_items) VALUES (
     ]'::jsonb
 );
 
--- RLS (Row Level Security) を有効化（公開アクセス用）
-ALTER TABLE riders ENABLE ROW LEVEL SECURITY;
-ALTER TABLE judges ENABLE ROW LEVEL SECURITY;
-ALTER TABLE judge_scores ENABLE ROW LEVEL SECURITY;
-ALTER TABLE audience_votes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE contest_settings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE logs ENABLE ROW LEVEL SECURITY;
+-- アニメーション設定テーブル（リザルト画面用）
+CREATE TABLE IF NOT EXISTS animation_settings (
+    id INTEGER PRIMARY KEY DEFAULT 1,
+    label_display_time NUMERIC DEFAULT 3.0,
+    bar_transition_speed NUMERIC DEFAULT 3.0,
+    sort_delay_time NUMERIC DEFAULT 3.0,
+    sort_transition_speed NUMERIC DEFAULT 0.8,
+    animation_style TEXT DEFAULT 'Standard',
+    label_font_size TEXT DEFAULT 'Medium',
+    is_running BOOLEAN DEFAULT FALSE,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT one_row CHECK (id = 1)
+);
+
+-- RLS を有効化
+ALTER TABLE animation_settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public access" ON animation_settings FOR ALL USING (true) WITH CHECK (true);
 
 -- 全テーブルに公開アクセスを許可するポリシー
 CREATE POLICY "Allow public access" ON riders FOR ALL USING (true) WITH CHECK (true);

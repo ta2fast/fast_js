@@ -174,12 +174,22 @@ export default function ResultsPage() {
             const newIds = mergedSettings.revealedItemIds || [];
             const newCount = newIds.length;
 
-            // Step 3: Trigger Animation Sequence if items were revealed
-            if (settings && newCount > prevRevealedCount.current && !animatingRef.current) {
-                console.log(`[Animation] Reveal Detected: ${prevRevealedCount.current} -> ${newCount}`);
+            // Step 3: Trigger Animation Sequence
+            const isForced = animData.success && animData.data?.is_running;
+            const hasNewReveals = newCount > prevRevealedCount.current;
+
+            if (settings && (hasNewReveals || isForced) && !animatingRef.current) {
+                console.log(`[Animation] Trigger: ${isForced ? 'FORCED' : 'REVEAL'} (Items: ${prevRevealedCount.current} -> ${newCount})`);
+                console.log("Target Riders:", results);
+
                 playRevealSound();
 
-                const newlyAddedId = newIds.find(id => !prevRevealedIds.current.includes(id));
+                // Determine which item to highlight
+                // If forced, we try to find the latest added ID or just highlight the last one in newIds
+                const newlyAddedId = isForced
+                    ? newIds[newIds.length - 1]
+                    : newIds.find(id => !prevRevealedIds.current.includes(id));
+
                 if (newlyAddedId) {
                     let itemName = '';
                     if (newlyAddedId === 'audience') {
@@ -193,10 +203,11 @@ export default function ResultsPage() {
                         console.log(`[Animation] Starting sequence for: ${itemName}`);
                         animatingRef.current = true;
 
-                        const labelMs = mergedSettings.animationDelayLabelMs ?? 3000;
-                        const barMs = mergedSettings.animationBarDurationMs ?? 3000;
-                        const sortDelayMs = mergedSettings.animationSortDelayMs ?? 3000;
-                        const sortDurationMs = mergedSettings.animationSortDurationMs ?? 800;
+                        // Ensure values are numbers
+                        const labelMs = Number(mergedSettings.animationDelayLabelMs) || 3000;
+                        const barMs = Number(mergedSettings.animationBarDurationMs) || 3000;
+                        const sortDelayMs = Number(mergedSettings.animationSortDelayMs) || 3000;
+                        const sortDurationMs = Number(mergedSettings.animationSortDurationMs) || 800;
 
                         setAnimationSortDuration(sortDurationMs / 1000);
 
@@ -225,6 +236,16 @@ export default function ResultsPage() {
 
                                 console.log(`[Animation] Sequence Complete`);
                                 setActiveHighlightItem(null);
+
+                                // If it was a forced trigger, reset the flag
+                                if (isForced) {
+                                    console.log('[Animation] Resetting is_running flag...');
+                                    await fetch('/api/admin/animation-settings', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ is_running: false }),
+                                    });
+                                }
                             } catch (err) {
                                 console.error('[Animation] Sequence Error:', err);
                             } finally {
@@ -240,7 +261,7 @@ export default function ResultsPage() {
                         setSortingIds(newIds);
                     }
                 } else {
-                    console.warn('[Animation] New items detected but no added ID found');
+                    console.warn('[Animation] No item ID found for trigger');
                     setBarRevealedIds(newIds);
                     setDisplayedIds(newIds);
                     setSortingIds(newIds);
