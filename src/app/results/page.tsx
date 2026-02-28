@@ -497,7 +497,7 @@ export default function ResultsPage() {
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.9 }}
                             transition={{
-                                layout: { type: 'spring', damping: 25, stiffness: 120, mass: 0.8, duration: animationSortDuration },
+                                layout: { type: 'tween', ease: 'easeInOut', duration: animationSortDuration },
                                 opacity: { duration: 0.3 }
                             }}
                             className={`relative flex items-center gap-4 ${index < 3 ? 'flex-[1.3] py-2 md:py-3' : 'flex-1 py-1 md:py-2'} min-h-0 bg-zinc-900/40 rounded-lg pr-4 border-l-[12px] ${index < 3 ? 'shadow-[0_0_20px_rgba(255,250,0,0.2)]' : ''}`}
