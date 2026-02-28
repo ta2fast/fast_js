@@ -95,11 +95,21 @@ export default function AnimationSettingsPage() {
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
+        const isNumeric = type === 'number' || ['label_display_time', 'bar_transition_speed', 'sort_delay_time', 'sort_transition_speed'].includes(name);
         setSettings(prev => ({
             ...prev,
-            [name]: type === 'number' ? Number(value) : value
+            [name]: isNumeric ? Number(value) : value
         }));
     };
+
+    const timeOptions = [];
+    for (let i = 0; i <= 10; i += 0.5) {
+        timeOptions.push(
+            <option key={i * 1000} value={i * 1000}>
+                {i.toFixed(1)}秒
+            </option>
+        );
+    }
 
     if (loading) {
         return (
@@ -126,71 +136,66 @@ export default function AnimationSettingsPage() {
                 <div className="card">
                     <form onSubmit={handleSave} className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* Number Inputs (ms) */}
+                            {/* Time Select Inputs */}
                             <div className="form-control">
                                 <label className="label font-bold text-sm text-[var(--text-muted)]">
-                                    項目名 表示時間 (ミリ秒)
+                                    項目名 表示時間
                                 </label>
-                                <input
-                                    type="number"
+                                <select
                                     name="label_display_time"
                                     value={settings.label_display_time}
                                     onChange={handleChange}
-                                    className="input input-bordered w-full"
-                                    min="0"
-                                    step="100"
+                                    className="select select-bordered w-full"
                                     required
-                                />
-                                <span className="text-xs text-zinc-500 mt-1">例：3000 = 3秒</span>
+                                >
+                                    {timeOptions}
+                                </select>
                             </div>
 
                             <div className="form-control">
                                 <label className="label font-bold text-sm text-[var(--text-muted)]">
-                                    バー伸長 スピード (ミリ秒)
+                                    バー伸長 スピード
                                 </label>
-                                <input
-                                    type="number"
+                                <select
                                     name="bar_transition_speed"
                                     value={settings.bar_transition_speed}
                                     onChange={handleChange}
-                                    className="input input-bordered w-full"
-                                    min="0"
-                                    step="100"
+                                    className="select select-bordered w-full"
                                     required
-                                />
+                                >
+                                    {timeOptions}
+                                </select>
                             </div>
 
                             <div className="form-control">
                                 <label className="label font-bold text-sm text-[var(--text-muted)]">
-                                    並べ替え前 待機時間 (ミリ秒)
+                                    並べ替え前 待機時間
                                 </label>
-                                <input
-                                    type="number"
+                                <select
                                     name="sort_delay_time"
                                     value={settings.sort_delay_time}
                                     onChange={handleChange}
-                                    className="input input-bordered w-full"
-                                    min="0"
-                                    step="100"
+                                    className="select select-bordered w-full"
                                     required
-                                />
+                                >
+                                    {timeOptions}
+                                </select>
                                 <span className="text-xs text-zinc-500 mt-1">バーが伸びた後、順位が動くまでの間</span>
                             </div>
 
                             <div className="form-control">
                                 <label className="label font-bold text-sm text-[var(--text-muted)]">
-                                    並べ替え アニメスピード (ミリ秒)
+                                    並べ替え アニメスピード
                                 </label>
-                                <input
-                                    type="number"
+                                <select
                                     name="sort_transition_speed"
                                     value={settings.sort_transition_speed}
                                     onChange={handleChange}
-                                    className="input input-bordered w-full"
-                                    min="0"
-                                    step="100"
+                                    className="select select-bordered w-full"
                                     required
-                                />
+                                >
+                                    {timeOptions}
+                                </select>
                             </div>
 
                             {/* Select Inputs */}
