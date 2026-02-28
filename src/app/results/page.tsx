@@ -86,6 +86,7 @@ export default function ResultsPage() {
     const [sortingIds, setSortingIds] = useState<string[]>([]);          // Stage 3: rank reorder
     const [animationSortDuration, setAnimationSortDuration] = useState(0.8);
     const [animationSettings, setAnimationSettings] = useState(DEFAULT_ANIMATION_SETTINGS);
+    const [isFullscreen, setIsFullscreen] = useState(false);
 
     const latestResultsRef = useRef<RiderResult[]>([]);
     const animationSettingsRef = useRef(DEFAULT_ANIMATION_SETTINGS);
@@ -139,9 +140,29 @@ export default function ResultsPage() {
             playTone(1318.51, now + 0.1, 0.4, 0.05);  // E6
             playTone(1760.00, now + 0.15, 0.3, 0.03); // A6
         } catch (e) {
-            console.error('Web Audio failed:', e);
+            console.error('[Audio] Setup Error:', e);
         }
     };
+
+    const toggleFullscreen = () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch((e) => {
+                console.error(`Error attempting to enable full-screen mode: ${e.message} (${e.name})`);
+            });
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
+    };
+
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
 
     const enableAudio = () => {
         const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -575,6 +596,23 @@ export default function ResultsPage() {
           overflow: hidden;
         }
       `}</style>
+
+            {/* Fullscreen Toggle Button */}
+            <button
+                onClick={toggleFullscreen}
+                className="fixed bottom-4 right-4 z-50 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-all opacity-40 hover:opacity-100 group"
+                title={isFullscreen ? "全画面解除" : "全画面表示"}
+            >
+                {isFullscreen ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
+                        <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+                    </svg>
+                ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
+                        <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+                    </svg>
+                )}
+            </button>
         </div>
     );
 }
