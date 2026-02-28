@@ -141,148 +141,128 @@ export default function ResultsPage() {
 
     const fetchData = async () => {
         try {
-            const [scoresRes, settingsRes] = await Promise.all([
+            // Step 1: Fetch all necessary data in parallel
+            const [scoresRes, settingsRes, animRes] = await Promise.all([
                 fetch('/api/scores', { cache: 'no-store' }),
                 fetch('/api/admin/settings', { cache: 'no-store' }),
+                fetch('/api/admin/animation-settings', { cache: 'no-store' })
             ]);
 
             const scoresData = await scoresRes.json();
             const settingsData = await settingsRes.json();
+            const animData = await animRes.json();
 
-            if (scoresData.success) {
-                setResults(scoresData.data);
+            if (!scoresData.success || !settingsData.success) {
+                console.warn('[Results] Partial data fetch failed');
+                return;
             }
-            if (settingsData.success) {
-                const newSettings = settingsData.data as ContestSettings;
 
-                // Debug Log for Settings Updates
-                if (settings?.animationStyle !== newSettings.animationStyle ||
-                    settings?.labelFontSize !== newSettings.labelFontSize) {
-                    console.log(`[Results] Settings Change Detected: Style=${newSettings.animationStyle}, Size=${newSettings.labelFontSize}`);
-                }
+            setResults(scoresData.data);
 
-                // setSettings(newSettings); // Removed redundant call here, will set after merging
-                const newIds = newSettings.revealedItemIds || [];
-                const newCount = newIds.length;
+            // Step 2: Merge contest settings with dedicated animation settings
+            const mergedSettings = settingsData.data as ContestSettings;
+            if (animData.success && animData.data) {
+                const s = animData.data as AnimationSettings;
+                mergedSettings.animationDelayLabelMs = Number(s.label_display_time) * 1000;
+                mergedSettings.animationBarDurationMs = Number(s.bar_transition_speed) * 1000;
+                mergedSettings.animationSortDelayMs = Number(s.sort_delay_time) * 1000;
+                mergedSettings.animationSortDurationMs = Number(s.sort_transition_speed) * 1000;
+                mergedSettings.animationStyle = s.animation_style;
+                mergedSettings.labelFontSize = s.label_font_size;
+            }
 
-                // Play sound and flash overlay if items were revealed
-                if (settings && newCount > prevRevealedCount.current && !animatingRef.current) {
-                    playRevealSound();
+            const newIds = mergedSettings.revealedItemIds || [];
+            const newCount = newIds.length;
 
-                    // Find which ID was just added
-                    const newlyAddedId = newIds.find(id => !prevRevealedIds.current.includes(id));
-                    if (newlyAddedId) {
-                        let itemName = '';
-                        if (newlyAddedId === 'audience') {
-                            itemName = 'AUDIENCE SCORE';
-                        } else {
-                            const item = newSettings.evaluationItems.find(i => i.id === newlyAddedId);
-                            itemName = item?.name || '';
-                        }
+            // Step 3: Trigger Animation Sequence if items were revealed
+            if (settings && newCount > prevRevealedCount.current && !animatingRef.current) {
+                console.log(`[Animation] Reveal Detected: ${prevRevealedCount.current} -> ${newCount}`);
+                playRevealSound();
 
-                        if (itemName) {
-                            // Mark animation as in progress
-                            animatingRef.current = true;
-
-                            const labelMs = newSettings.animationDelayLabelMs ?? 3000;
-                            const barMs = newSettings.animationBarDurationMs ?? 3000;
-                            const sortDelayMs = newSettings.animationSortDelayMs ?? 3000;
-                            const sortDurationMs = newSettings.animationSortDurationMs ?? 800;
-
-                            setAnimationSortDuration(sortDurationMs / 1000);
-
-                            // Sequence execution loop
-                            const runSequence = async () => {
-                                try {
-                                    // === Step A: Label Display ===
-                                    setActiveHighlightItem(itemName);
-                                    setRevealingItem(itemName);
-                                    await wait(labelMs);
-
-                                    // Exit Step A and WAIT for the exit transition (opacity/scale) to complete
-                                    setRevealingItem(null);
-                                    await wait(500); // Wait 500ms for framer-motion exit animation
-
-                                    // === Step B: Bar Extension & Counter ===
-                                    // Start both simultaneously after Label is GONE
-                                    setBarRevealedIds(newIds);
-                                    setDisplayedIds(newIds);
-                                    await wait(barMs);
-
-                                    // === Step C: Sort Delay (Confirmation Pause) ===
-                                    await wait(sortDelayMs);
-
-                                    // === Step D: Sorting (Layout Transition) ===
-                                    setSortingIds(newIds);
-                                    await wait(sortDurationMs);
-
-                                    // Final Step: Clear high-visibility highlight in Legend
-                                    setActiveHighlightItem(null);
-                                } finally {
-                                    animatingRef.current = false;
-                                }
-                            };
-
-                            runSequence();
-                        } else {
-                            // Fallback if no item matched
-                            setBarRevealedIds(newIds);
-                            setDisplayedIds(newIds);
-                            setSortingIds(newIds);
-                        }
+                const newlyAddedId = newIds.find(id => !prevRevealedIds.current.includes(id));
+                if (newlyAddedId) {
+                    let itemName = '';
+                    if (newlyAddedId === 'audience') {
+                        itemName = 'AUDIENCE SCORE';
                     } else {
-                        // This else block means newCount > prevRevealedCount.current but no newlyAddedId was found.
-                        // This shouldn't happen if newIds are always unique and added one by one.
-                        // For safety, update states directly.
-                        console.warn("[Results] New items revealed but no single newly added ID found. Updating states directly.");
+                        const item = mergedSettings.evaluationItems.find(i => i.id === newlyAddedId);
+                        itemName = item?.name || '';
+                    }
+
+                    if (itemName) {
+                        console.log(`[Animation] Starting sequence for: ${itemName}`);
+                        animatingRef.current = true;
+
+                        const labelMs = mergedSettings.animationDelayLabelMs ?? 3000;
+                        const barMs = mergedSettings.animationBarDurationMs ?? 3000;
+                        const sortDelayMs = mergedSettings.animationSortDelayMs ?? 3000;
+                        const sortDurationMs = mergedSettings.animationSortDurationMs ?? 800;
+
+                        setAnimationSortDuration(sortDurationMs / 1000);
+
+                        const runSequence = async () => {
+                            try {
+                                console.log(`[Animation] Step 1 Start: Label (${labelMs}ms)`);
+                                setActiveHighlightItem(itemName);
+                                setRevealingItem(itemName);
+                                await wait(labelMs);
+
+                                console.log(`[Animation] Step 1 End: Label Fade Out`);
+                                setRevealingItem(null);
+                                await wait(500);
+
+                                console.log(`[Animation] Step 2 Start: Bar Extension (${barMs}ms)`);
+                                setBarRevealedIds(newIds);
+                                setDisplayedIds(newIds);
+                                await wait(barMs);
+
+                                console.log(`[Animation] Step 3 Start: Sort Delay (${sortDelayMs}ms)`);
+                                await wait(sortDelayMs);
+
+                                console.log(`[Animation] Step 4 Start: Sorting (${sortDurationMs}ms)`);
+                                setSortingIds(newIds);
+                                await wait(sortDurationMs);
+
+                                console.log(`[Animation] Sequence Complete`);
+                                setActiveHighlightItem(null);
+                            } catch (err) {
+                                console.error('[Animation] Sequence Error:', err);
+                            } finally {
+                                animatingRef.current = false;
+                            }
+                        };
+
+                        runSequence();
+                    } else {
+                        console.warn('[Animation] Item name not found for ID:', newlyAddedId);
                         setBarRevealedIds(newIds);
                         setDisplayedIds(newIds);
                         setSortingIds(newIds);
                     }
-                } else if (!settings) {
-                    // Initial load
-                    console.log("[Results] Initial load, setting all revealed IDs.");
-                    setBarRevealedIds(newIds);
-                    setDisplayedIds(newIds);
-                    setSortingIds(newIds);
-                } else if (newCount < prevRevealedCount.current) {
-                    // Items were removed — reset immediately
-                    console.log("[Results] Items removed, resetting all revealed IDs.");
-                    if (barTimeoutRef.current) clearTimeout(barTimeoutRef.current);
-                    if (displayTimeoutRef.current) clearTimeout(displayTimeoutRef.current);
-                    if (sortTimeoutRef.current) clearTimeout(sortTimeoutRef.current);
-                    animatingRef.current = false;
+                } else {
+                    console.warn('[Animation] New items detected but no added ID found');
                     setBarRevealedIds(newIds);
                     setDisplayedIds(newIds);
                     setSortingIds(newIds);
                 }
-                // If newCount === prevRevealedCount.current AND animating, do nothing (let timeouts finish)
-
-                // prevRevealedCount.current = newCount; // Move this to after the sequence starts or logic finishes
-                prevRevealedIds.current = newIds;
-
-                // Merge with animation settings from dedicated table if available
-                try {
-                    const animRes = await fetch('/api/admin/animation-settings', { cache: 'no-store' });
-                    const animData = await animRes.json();
-                    if (animData.success && animData.data) {
-                        const s = animData.data as AnimationSettings;
-                        newSettings.animationDelayLabelMs = Number(s.label_display_time) * 1000;
-                        newSettings.animationBarDurationMs = Number(s.bar_transition_speed) * 1000;
-                        newSettings.animationSortDelayMs = Number(s.sort_delay_time) * 1000;
-                        newSettings.animationSortDurationMs = Number(s.sort_transition_speed) * 1000;
-                        newSettings.animationStyle = s.animation_style;
-                        newSettings.labelFontSize = s.label_font_size;
-                    }
-                } catch (e) {
-                    console.warn('[Results] Failed to fetch dedicated animation settings, using fallbacks.', e);
-                }
-
-                setSettings(newSettings);
-                prevRevealedCount.current = newCount;
+            } else if (!settings) {
+                console.log("[Results] Initial Load Complete");
+                setBarRevealedIds(newIds);
+                setDisplayedIds(newIds);
+                setSortingIds(newIds);
+            } else if (newCount < prevRevealedCount.current) {
+                console.log("[Results] Items Reset");
+                animatingRef.current = false;
+                setBarRevealedIds(newIds);
+                setDisplayedIds(newIds);
+                setSortingIds(newIds);
             }
+
+            prevRevealedCount.current = newCount;
+            prevRevealedIds.current = newIds;
+            setSettings(mergedSettings);
         } catch (error) {
-            console.error('Failed to fetch results data:', error);
+            console.error('[Results] fetchData error:', error);
         } finally {
             setLoading(false);
         }
@@ -331,8 +311,6 @@ export default function ResultsPage() {
 
         return results.map(res => {
             // Calculate breakdown based on judge scores
-            // Each JudgeScore has .scores: JudgeItemScore[] (itemId, score)
-            // We need to average these and multiply by weight
             const itemBreakdown = enabledItems.map((item, index) => {
                 const itemScoresAcrossJudges = res.judgeScores.map(js => {
                     const s = js.scores.find(is => is.itemId === item.id);
@@ -348,7 +326,7 @@ export default function ResultsPage() {
                     name: item.name,
                     score: avg,
                     color: OUTDOOR_COLORS[index % OUTDOOR_COLORS.length],
-                    revealed: barRevealedIds.includes(item.id)  // Stage 1: bars use barRevealedIds
+                    revealed: barRevealedIds.includes(item.id)
                 };
             });
 
@@ -358,12 +336,12 @@ export default function ResultsPage() {
                 name: 'Audience',
                 score: res.audienceWeightedScore,
                 color: '#f87171',
-                revealed: barRevealedIds.includes('audience')  // Stage 1: bars use barRevealedIds
+                revealed: barRevealedIds.includes('audience')
             };
 
             const allItems = [...itemBreakdown, audienceBreakdown];
 
-            // Score counter uses displayedIds (Stage 2: score confirmed)
+            // Score counter uses displayedIds
             const currentDisplayedScore = allItems
                 .filter(item => displayedIds.includes(item.id))
                 .reduce((sum, item) => sum + item.score, 0);
@@ -378,7 +356,7 @@ export default function ResultsPage() {
                 currentDisplayedScore,
                 sortingScore
             };
-        }).sort((a, b) => b.sortingScore - a.sortingScore); // 順位変更のタイミングを制御するためsortingScoreを使用
+        }).sort((a, b) => b.sortingScore - a.sortingScore);
     }, [results, settings, barRevealedIds, displayedIds, sortingIds]);
 
     if (loading || !settings) {
