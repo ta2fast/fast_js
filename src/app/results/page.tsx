@@ -508,8 +508,6 @@ export default function ResultsPage() {
                             {/* Rank & Name */}
                             <div className="w-[160px] md:w-[300px] flex items-center gap-3 shrink-0 pl-4">
                                 <motion.div
-                                    animate={index === 0 ? { scale: [1, 1.1, 1] } : {}}
-                                    transition={index === 0 ? { repeat: Infinity, duration: 2 } : {}}
                                     className={`${index < 3 ? 'text-4xl md:text-6xl w-14 md:w-24' : 'text-3xl md:text-4xl w-10 md:w-16'} font-bold shrink-0 ${index === 0 ? 'text-[#fffa00] drop-shadow-[0_0_10px_rgba(255,250,0,0.8)]' :
                                         index === 1 ? 'text-[#e2e8f0] drop-shadow-[0_0_10px_rgba(226,232,240,0.8)]' :
                                             index === 2 ? 'text-[#b45309] drop-shadow-[0_0_10px_rgba(180,83,9,0.8)]' :
@@ -561,7 +559,7 @@ export default function ResultsPage() {
                                 <div className={`${index < 3 ? 'text-3xl md:text-5xl' : 'text-2xl md:text-4xl'} font-bold tracking-tight text-[#fffa00] drop-shadow-[0_0_10px_rgba(255,250,0,0.5)]`}>
                                     <AnimatedCounter
                                         value={res.currentDisplayedScore}
-                                        duration={BAR_TRANSITION_SPEED}
+                                        duration={animationSettingsRef.current.bar_transition_speed}
                                     />
                                 </div>
                             </div>
