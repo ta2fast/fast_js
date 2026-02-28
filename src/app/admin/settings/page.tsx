@@ -234,76 +234,7 @@ export default function SettingsPage() {
                     </div>
                 </div>
 
-                {/* Animation Settings */}
-                <div className="card lg:col-span-2">
-                    <h2 className="text-xl font-bold mb-4">🎬 リザルト画面アニメーション設定</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <div>
-                            <label className="block text-sm text-[var(--text-muted)] mb-2 font-bold">
-                                ① 項目名表示 (ms)
-                            </label>
-                            <input
-                                type="number"
-                                value={settings.animationDelayLabelMs}
-                                onChange={e => saveSettings({ animationDelayLabelMs: parseInt(e.target.value) || 0 })}
-                                className="input"
-                                min="0"
-                                step="100"
-                            />
-                            <p className="text-[10px] text-[var(--text-muted)] mt-1">
-                                項目全体が表示される時間
-                            </p>
-                        </div>
-                        <div>
-                            <label className="block text-sm text-[var(--text-muted)] mb-2 font-bold">
-                                ② バー伸長 (ms)
-                            </label>
-                            <input
-                                type="number"
-                                value={settings.animationBarDurationMs}
-                                onChange={e => saveSettings({ animationBarDurationMs: parseInt(e.target.value) || 0 })}
-                                className="input"
-                                min="0"
-                                step="100"
-                            />
-                            <p className="text-[10px] text-[var(--text-muted)] mt-1">
-                                バーが伸びる時間
-                            </p>
-                        </div>
-                        <div>
-                            <label className="block text-sm text-[var(--text-muted)] mb-2 font-bold">
-                                ③ 整理待ち (ms)
-                            </label>
-                            <input
-                                type="number"
-                                value={settings.animationSortDelayMs}
-                                onChange={e => saveSettings({ animationSortDelayMs: parseInt(e.target.value) || 0 })}
-                                className="input"
-                                min="0"
-                                step="100"
-                            />
-                            <p className="text-[10px] text-[var(--text-muted)] mt-1">
-                                並べ替えまでの静止時間
-                            </p>
-                        </div>
-                        <div>
-                            <label className="block text-sm text-[var(--text-muted)] mb-2 font-bold">
-                                ④ 並べ替え速さ (ms)
-                            </label>
-                            <input
-                                type="number"
-                                value={settings.animationSortDurationMs}
-                                onChange={e => saveSettings({ animationSortDurationMs: parseInt(e.target.value) || 0 })}
-                                className="input"
-                                min="0"
-                                step="100"
-                            />
-                            <p className="text-[10px] text-[var(--text-muted)] mt-1">
-                                レイアウト移動の速度
-                            </p>
-                        </div>
-                    </div>
-                </div>
+
 
                 {/* Evaluation Items */}
                 <div className="card lg:col-span-2">
