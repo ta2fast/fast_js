@@ -67,8 +67,9 @@ export interface ContestSettings {
   contestName: string;
   contestDate: string;
   revealedItemIds: string[];      // 公開済みの評価項目ID
-  animationDelayScoreMs: number;  // 項目表示から点数反映までの遅延 (ms)
-  animationDelayRankMs: number;   // 点数反映から順位変更までの遅延 (ms)
+  animationDelayLabelMs: number;  // 項目名の表示時間 (ms)
+  animationDelayBarMs: number;    // バーの伸長にかかる時間 (ms)
+  animationDelaySortMs: number;   // 並べ替えが始まるまでの待ち時間 (ms)
 }
 
 // 評価項目のカラーパレット
@@ -131,7 +132,7 @@ export interface ApiResponse<T> {
   error?: string;
 }
 
-// デフォルトの評価項目
+// デ飽ル項目の
 export const DEFAULT_EVALUATION_ITEMS: EvaluationItem[] = [
   { id: 'make_rate', name: 'メイク率', weight: 5, minScore: 1, maxScore: 5, order: 1, enabled: true },
   { id: 'difficulty', name: '技の難易度', weight: 3, minScore: 1, maxScore: 5, order: 2, enabled: true },
@@ -156,6 +157,7 @@ export const DEFAULT_CONTEST_SETTINGS: ContestSettings = {
   contestName: 'BMX Flatland Contest',
   contestDate: new Date().toISOString().split('T')[0],
   revealedItemIds: [],
-  animationDelayScoreMs: 3000,
-  animationDelayRankMs: 3000,
+  animationDelayLabelMs: 3000,
+  animationDelayBarMs: 3000,
+  animationDelaySortMs: 3000,
 };

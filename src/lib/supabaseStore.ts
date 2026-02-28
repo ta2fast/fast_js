@@ -402,11 +402,11 @@ export async function getSettings(): Promise<ContestSettings> {
         const rawRevealedIds = data.revealed_item_ids || [];
 
         // Extract animation config from revealed_item_ids array (stored as special object)
-        let animConfig: { scoreDelayMs?: number; rankDelayMs?: number } = {};
+        let animConfig: { labelDelayMs?: number; barDelayMs?: number; sortDelayMs?: number } = {};
         const cleanRevealedIds: string[] = [];
         for (const entry of rawRevealedIds) {
-            if (typeof entry === 'object' && entry !== null && entry.__animConfig) {
-                animConfig = entry;
+            if (typeof entry === 'object' && entry !== null && (entry as any).__animConfig) {
+                animConfig = entry as any;
             } else if (typeof entry === 'string') {
                 cleanRevealedIds.push(entry);
             }
@@ -426,8 +426,9 @@ export async function getSettings(): Promise<ContestSettings> {
             contestName: data.contest_name,
             contestDate: data.contest_date,
             revealedItemIds: cleanRevealedIds,
-            animationDelayScoreMs: animConfig.scoreDelayMs ?? DEFAULT_CONTEST_SETTINGS.animationDelayScoreMs,
-            animationDelayRankMs: animConfig.rankDelayMs ?? DEFAULT_CONTEST_SETTINGS.animationDelayRankMs,
+            animationDelayLabelMs: animConfig.labelDelayMs ?? DEFAULT_CONTEST_SETTINGS.animationDelayLabelMs,
+            animationDelayBarMs: animConfig.barDelayMs ?? DEFAULT_CONTEST_SETTINGS.animationDelayBarMs,
+            animationDelaySortMs: animConfig.sortDelayMs ?? DEFAULT_CONTEST_SETTINGS.animationDelaySortMs,
         };
     } catch (err) {
         console.error('Failed to fetch settings:', err);
@@ -446,7 +447,12 @@ export async function updateSettings(updates: Partial<ContestSettings>): Promise
         // Embed animation config as a special object inside revealed_item_ids
         const revealedWithConfig: unknown[] = [
             ...newSettings.revealedItemIds,
-            { __animConfig: true, scoreDelayMs: newSettings.animationDelayScoreMs, rankDelayMs: newSettings.animationDelayRankMs }
+            {
+                __animConfig: true,
+                labelDelayMs: newSettings.animationDelayLabelMs,
+                barDelayMs: newSettings.animationDelayBarMs,
+                sortDelayMs: newSettings.animationDelaySortMs
+            }
         ];
 
         const upsertData: Record<string, unknown> = {

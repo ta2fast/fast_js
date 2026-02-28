@@ -20,7 +20,7 @@ const OUTDOOR_COLORS = [
 ];
 
 // Count-up component for the total score
-function AnimatedCounter({ value }: { value: number }) {
+function AnimatedCounter({ value, duration = 3000 }: { value: number; duration?: number }) {
     const [displayValue, setDisplayValue] = useState(0);
 
     useEffect(() => {
@@ -28,7 +28,6 @@ function AnimatedCounter({ value }: { value: number }) {
         const end = value;
         if (start === end) return;
 
-        const duration = 3000; // 3s sync with bar extension
         const startTime = performance.now();
 
         const update = (now: number) => {
@@ -46,7 +45,7 @@ function AnimatedCounter({ value }: { value: number }) {
             }
         };
         requestAnimationFrame(update);
-    }, [value]);
+    }, [value, duration]);
 
     return <span>{displayValue.toFixed(2)}</span>;
 }
@@ -169,15 +168,18 @@ export default function ResultsPage() {
 
                         if (itemName) {
                             setRevealingItem(itemName);
-                            setTimeout(() => setRevealingItem(null), 3500);
 
                             // Clear any existing timeouts to prevent race conditions on rapid clicks
                             if (barTimeoutRef.current) clearTimeout(barTimeoutRef.current);
                             if (displayTimeoutRef.current) clearTimeout(displayTimeoutRef.current);
                             if (sortTimeoutRef.current) clearTimeout(sortTimeoutRef.current);
 
-                            const scoreDelay = newSettings.animationDelayScoreMs ?? 3000;
-                            const rankDelay = newSettings.animationDelayRankMs ?? 3000;
+                            const labelDelay = newSettings.animationDelayLabelMs ?? 3000;
+                            const barDuration = newSettings.animationDelayBarMs ?? 3000;
+                            const sortDelay = newSettings.animationDelaySortMs ?? 3000;
+
+                            // Auto-hide the "Now Revealing" label after it finishes talking
+                            setTimeout(() => setRevealingItem(null), labelDelay + barDuration + 500);
 
                             // Mark animation as in progress
                             animatingRef.current = true;
@@ -187,17 +189,17 @@ export default function ResultsPage() {
                             // Stage 1 (0s): Label only — handled by revealingItem state above.
                             // We do NOT update barRevealedIds or displayedIds yet.
 
-                            // Stage 2 (3s): Bar start extension AND Score start counting simultaneously
+                            // Stage 2: Bar start extension AND Score start counting simultaneously
                             displayTimeoutRef.current = setTimeout(() => {
                                 setBarRevealedIds(newIds);
                                 setDisplayedIds(newIds);
-                            }, scoreDelay);
+                            }, labelDelay);
 
-                            // Stage 3 (6s): All items finished — Perform sorting
+                            // Stage 3: All items finished — Perform sorting
                             sortTimeoutRef.current = setTimeout(() => {
                                 setSortingIds(newIds);
                                 animatingRef.current = false;
-                            }, scoreDelay + rankDelay);
+                            }, labelDelay + barDuration + sortDelay);
                         } else {
                             // Fallback if no item matched
                             setBarRevealedIds(newIds);
@@ -433,7 +435,11 @@ export default function ResultsPage() {
                                         animate={{
                                             width: item.revealed ? `${(item.score / 125) * 100}%` : '0%'
                                         }}
-                                        transition={{ type: 'tween', duration: 3, ease: 'easeOut' }}
+                                        transition={{
+                                            type: 'tween',
+                                            duration: (settings.animationDelayBarMs ?? 3000) / 1000,
+                                            ease: 'easeOut'
+                                        }}
                                         style={{
                                             backgroundColor: item.color,
                                             boxShadow: item.revealed ? `inset 0 0 20px rgba(255,255,255,0.4), 0 0 15px ${item.color}66` : 'none'
@@ -456,7 +462,10 @@ export default function ResultsPage() {
 
                             <div className="w-24 md:w-40 text-right shrink-0">
                                 <div className={`${index < 3 ? 'text-3xl md:text-5xl' : 'text-2xl md:text-4xl'} font-bold tracking-tight text-[#fffa00] drop-shadow-[0_0_10px_rgba(255,250,0,0.5)]`}>
-                                    <AnimatedCounter value={res.currentDisplayedScore} />
+                                    <AnimatedCounter
+                                        value={res.currentDisplayedScore}
+                                        duration={settings.animationDelayBarMs ?? 3000}
+                                    />
                                 </div>
                             </div>
                         </motion.div>

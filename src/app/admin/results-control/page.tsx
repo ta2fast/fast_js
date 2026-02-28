@@ -8,8 +8,9 @@ export default function ResultsControlPage() {
     const [settings, setSettings] = useState<ContestSettings | null>(null);
     const [loading, setLoading] = useState(true);
     const [updating, setUpdating] = useState(false);
-    const [scoreDelaySec, setScoreDelaySec] = useState(2);
-    const [rankDelaySec, setRankDelaySec] = useState(2);
+    const [labelDelaySec, setLabelDelaySec] = useState(3);
+    const [barDurationSec, setBarDurationSec] = useState(3);
+    const [sortDelaySec, setSortDelaySec] = useState(3);
 
     useEffect(() => {
         fetchSettings();
@@ -21,8 +22,9 @@ export default function ResultsControlPage() {
             const data: ApiResponse<ContestSettings> = await res.json();
             if (data.success && data.data) {
                 setSettings(data.data);
-                setScoreDelaySec((data.data.animationDelayScoreMs ?? 2000) / 1000);
-                setRankDelaySec((data.data.animationDelayRankMs ?? 2000) / 1000);
+                setLabelDelaySec((data.data.animationDelayLabelMs ?? 3000) / 1000);
+                setBarDurationSec((data.data.animationDelayBarMs ?? 3000) / 1000);
+                setSortDelaySec((data.data.animationDelaySortMs ?? 3000) / 1000);
             } else {
                 alert(`設定の読み込みに失敗しました: ${data.error || '不明なエラー'}`);
             }
@@ -57,7 +59,7 @@ export default function ResultsControlPage() {
         }
     };
 
-    const updateAnimationDelays = async (newScoreDelaySec: number, newRankDelaySec: number) => {
+    const updateAnimationDelays = async (label: number, bar: number, sort: number) => {
         if (!settings) return;
         setUpdating(true);
         try {
@@ -65,8 +67,9 @@ export default function ResultsControlPage() {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    animationDelayScoreMs: Math.round(newScoreDelaySec * 1000),
-                    animationDelayRankMs: Math.round(newRankDelaySec * 1000),
+                    animationDelayLabelMs: Math.round(label * 1000),
+                    animationDelayBarMs: Math.round(bar * 1000),
+                    animationDelaySortMs: Math.round(sort * 1000),
                 }),
             });
             const data: ApiResponse<ContestSettings> = await res.json();
@@ -209,43 +212,43 @@ export default function ResultsControlPage() {
                             <span className="w-2 h-6 bg-amber-500 rounded-full"></span>
                             ⏱ アニメーションタイミング設定
                         </h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div>
-                                <label className="block text-sm text-[var(--text-muted)] mb-2">
-                                    項目名表示 → 点数反映
+                                <label className="block text-sm text-[var(--text-muted)] mb-2 font-bold">
+                                    ① 項目名の表示時間
                                 </label>
                                 <div className="flex items-center gap-3">
                                     <select
-                                        value={scoreDelaySec}
+                                        value={labelDelaySec}
                                         onChange={(e) => {
                                             const val = parseFloat(e.target.value);
-                                            setScoreDelaySec(val);
-                                            updateAnimationDelays(val, rankDelaySec);
+                                            setLabelDelaySec(val);
+                                            updateAnimationDelays(val, barDurationSec, sortDelaySec);
                                         }}
-                                        className="input flex-1"
+                                        className="input flex-1 border-amber-200"
                                     >
-                                        {[0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map(v => (
+                                        {[0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 6, 7, 8, 9, 10].map(v => (
                                             <option key={v} value={v}>{v} 秒</option>
                                         ))}
                                     </select>
                                 </div>
                                 <p className="text-xs text-[var(--text-muted)] mt-1">
-                                    項目名が表示されてからスコアバーが伸び始めるまでの待ち時間
+                                    中央に項目ラベルが表示され、「タメ」を作る時間
                                 </p>
                             </div>
                             <div>
-                                <label className="block text-sm text-[var(--text-muted)] mb-2">
-                                    点数反映 → 順位変更
+                                <label className="block text-sm text-[var(--text-muted)] mb-2 font-bold">
+                                    ② バーの伸長スピード
                                 </label>
                                 <div className="flex items-center gap-3">
                                     <select
-                                        value={rankDelaySec}
+                                        value={barDurationSec}
                                         onChange={(e) => {
                                             const val = parseFloat(e.target.value);
-                                            setRankDelaySec(val);
-                                            updateAnimationDelays(scoreDelaySec, val);
+                                            setBarDurationSec(val);
+                                            updateAnimationDelays(labelDelaySec, val, sortDelaySec);
                                         }}
-                                        className="input flex-1"
+                                        className="input flex-1 border-amber-200"
                                     >
                                         {[0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map(v => (
                                             <option key={v} value={v}>{v} 秒</option>
@@ -253,7 +256,30 @@ export default function ResultsControlPage() {
                                     </select>
                                 </div>
                                 <p className="text-xs text-[var(--text-muted)] mt-1">
-                                    スコアバーが伸びてから順位が入れ替わるまでの待ち時間
+                                    バーが伸び、数値がカウントアップする所要時間
+                                </p>
+                            </div>
+                            <div>
+                                <label className="block text-sm text-[var(--text-muted)] mb-2 font-bold">
+                                    ③ 並べ替え待ち時間
+                                </label>
+                                <div className="flex items-center gap-3">
+                                    <select
+                                        value={sortDelaySec}
+                                        onChange={(e) => {
+                                            const val = parseFloat(e.target.value);
+                                            setSortDelaySec(val);
+                                            updateAnimationDelays(labelDelaySec, barDurationSec, val);
+                                        }}
+                                        className="input flex-1 border-amber-200"
+                                    >
+                                        {[0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map(v => (
+                                            <option key={v} value={v}>{v} 秒</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <p className="text-xs text-[var(--text-muted)] mt-1">
+                                    全てが確定してから、順位が入れ替わるまでの待機時間
                                 </p>
                             </div>
                         </div>

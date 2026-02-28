@@ -237,37 +237,53 @@ export default function SettingsPage() {
                 {/* Animation Settings */}
                 <div className="card lg:col-span-2">
                     <h2 className="text-xl font-bold mb-4">🎬 リザルト画面アニメーション設定</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div>
-                            <label className="block text-sm text-[var(--text-muted)] mb-2">
-                                項目表示から点数反映までの遅延 (ミリ秒)
+                            <label className="block text-sm text-[var(--text-muted)] mb-2 font-bold">
+                                ① 項目名の表示時間 (ms)
                             </label>
                             <input
                                 type="number"
-                                value={settings.animationDelayScoreMs}
-                                onChange={e => saveSettings({ animationDelayScoreMs: parseInt(e.target.value) || 2000 })}
+                                value={settings.animationDelayLabelMs}
+                                onChange={e => saveSettings({ animationDelayLabelMs: parseInt(e.target.value) || 0 })}
                                 className="input"
                                 min="0"
                                 step="100"
                             />
                             <p className="text-xs text-[var(--text-muted)] mt-1">
-                                スコア項目名が表示されてからバーが伸び始めるまでの時間 (1000ms = 1秒)
+                                項目名が表示されてからバーが動き出すまでの時間
                             </p>
                         </div>
                         <div>
-                            <label className="block text-sm text-[var(--text-muted)] mb-2">
-                                点数反映から順位変更までの遅延 (ミリ秒)
+                            <label className="block text-sm text-[var(--text-muted)] mb-2 font-bold">
+                                ② バーの伸長スピード (ms)
                             </label>
                             <input
                                 type="number"
-                                value={settings.animationDelayRankMs}
-                                onChange={e => saveSettings({ animationDelayRankMs: parseInt(e.target.value) || 2000 })}
+                                value={settings.animationDelayBarMs}
+                                onChange={e => saveSettings({ animationDelayBarMs: parseInt(e.target.value) || 0 })}
                                 className="input"
                                 min="0"
                                 step="100"
                             />
                             <p className="text-xs text-[var(--text-muted)] mt-1">
-                                バーが伸び始めてから順位が入れ替わるまでの時間
+                                バーが伸び数値が加算される時間
+                            </p>
+                        </div>
+                        <div>
+                            <label className="block text-sm text-[var(--text-muted)] mb-2 font-bold">
+                                ③ 並べ替え待ち時間 (ms)
+                            </label>
+                            <input
+                                type="number"
+                                value={settings.animationDelaySortMs}
+                                onChange={e => saveSettings({ animationDelaySortMs: parseInt(e.target.value) || 0 })}
+                                className="input"
+                                min="0"
+                                step="100"
+                            />
+                            <p className="text-xs text-[var(--text-muted)] mt-1">
+                                バーが止まってから順位が入れ替わるまでの待機時間
                             </p>
                         </div>
                     </div>
