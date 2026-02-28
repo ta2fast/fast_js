@@ -168,29 +168,3 @@ export const DEFAULT_CONTEST_SETTINGS: ContestSettings = {
   labelFontSize: 'Medium',
 };
 
-// 新しい専用設定テーブル用
-export interface AnimationSettings {
-  id: number;
-  label_display_time: number;
-  bar_transition_speed: number;
-  sort_delay_time: number;
-  sort_transition_speed: number;
-  animation_style: 'Standard' | 'Pop-in' | 'Slide' | 'Flash';
-  label_font_size: 'Small' | 'Medium' | 'Large' | 'Extra Large';
-  is_running: boolean;
-  target_item_id: string | null;
-  updated_at: string;
-}
-
-export const DEFAULT_ANIMATION_SETTINGS: AnimationSettings = {
-  id: 1,
-  label_display_time: 3.0,
-  bar_transition_speed: 3.0,
-  sort_delay_time: 3.0,
-  sort_transition_speed: 0.8,
-  animation_style: 'Standard',
-  label_font_size: 'Medium',
-  is_running: false,
-  target_item_id: null,
-  updated_at: new Date().toISOString(),
-};

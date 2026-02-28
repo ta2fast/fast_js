@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ContestSettings, EvaluationItem, ApiResponse, AnimationSettings } from '@/types';
+import { ContestSettings, DEFAULT_CONTEST_SETTINGS } from '@/types';
 
 export default function ResultsControlPage() {
     const [settings, setSettings] = useState<ContestSettings | null>(null);
@@ -14,45 +14,23 @@ export default function ResultsControlPage() {
     }, []);
 
     const fetchSettings = async () => {
-        try {
-            // Fetch general contest settings (for revealed items)
-            const res = await fetch('/api/admin/settings');
-            const data: ApiResponse<ContestSettings> = await res.json();
-            if (data.success && data.data) {
-                setSettings(data.data);
-            } else {
-                alert(`設定の読み込みに失敗しました: ${data.error || '不明なエラー'}`);
-            }
-        } catch (error) {
-            console.error('Failed to fetch settings:', error);
-            alert('通信エラーが発生しました。');
-        } finally {
-            setLoading(false);
-        }
+        // Fallback since setting table is removed
+        setSettings(DEFAULT_CONTEST_SETTINGS);
+        setLoading(false);
     };
 
     const updateReveals = async (newRevealedIds: string[]) => {
         if (!settings) return;
         setUpdating(true);
-        try {
-            // Update the revealed item IDs (data sync)
-            const res = await fetch('/api/admin/settings', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ revealedItemIds: newRevealedIds }),
+        // Mock update: since DB sync is removed and animations rely on Score Update,
+        // this control interface is only a local visual toggle now.
+        setTimeout(() => {
+            setSettings({
+                ...settings,
+                revealedItemIds: newRevealedIds
             });
-            const data: ApiResponse<ContestSettings> = await res.json();
-            if (data.success && data.data) {
-                setSettings(data.data);
-            } else {
-                alert(`更新に失敗しました: ${data.error || '不明なエラー'}`);
-            }
-        } catch (error) {
-            console.error('Failed to update revealed items:', error);
-            alert('通信エラーが発生しました。');
-        } finally {
             setUpdating(false);
-        }
+        }, 300);
     };
 
     const toggleItem = (itemId: string) => {
@@ -184,10 +162,9 @@ export default function ResultsControlPage() {
                             <span className="text-amber-500">💡</span> 使い方
                         </h3>
                         <ul className="text-sm text-[var(--text-muted)] space-y-1 list-disc list-inside">
-                            <li>この画面のボタンをクリックすると、公開中のリザルト画面に即座に反映されます。</li>
-                            <li>会場のプロジェクター等でリザルト画面を投影しながら操作してください。</li>
-                            <li>項目は一つずつ順番に表示していく演出がおすすめです。</li>
-                            <li>アニメーションタイミングは秒単位で調整できます。値を変更後、フォーカスを外すと保存されます。</li>
+                            <li><strong>注意:</strong> 現在のシステムでは、アニメーションは「スコアの更新」に連動して自動実行されるよう設定されています。</li>
+                            <li>この画面の表示切り替えボタンは、現在データベースと連動していません。</li>
+                            <li>スコア入力画面（/admin/scores）で点数を入力・更新すると、自動的にリザルト画面でアニメーションが実行されます。</li>
                         </ul>
                     </aside>
                 </div>

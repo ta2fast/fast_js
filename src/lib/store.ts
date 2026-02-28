@@ -29,8 +29,6 @@ export {
     getSettings,
     updateSettings,
     setVotingEnabled,
-    getAnimationSettings,
-    updateAnimationSettings,
 
     // Judges
     getJudges,

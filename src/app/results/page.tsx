@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     RiderResult,
     ContestSettings,
-    AnimationSettings,
+    DEFAULT_CONTEST_SETTINGS,
 } from '@/types';
 import { supabase } from '@/lib/supabase';
 
@@ -75,19 +75,18 @@ export default function ResultsPage() {
     const [sortingIds, setSortingIds] = useState<string[]>([]);          // Stage 3: rank reorder
     const [animationSortDuration, setAnimationSortDuration] = useState(0.8);
 
-    // === Background data (latest from Supabase, NOT shown until animation completes) ===
     const latestResultsRef = useRef<RiderResult[]>([]);
-    const latestSettingsRef = useRef<ContestSettings | null>(null);
+    const lastScoreHashesRef = useRef<Record<string, string>>({});
 
     // === Animation lock ===
     const isAnimatingRef = useRef(false);
 
     // Ref to hold runAnimationSequence for polling fallback
     const runAnimationRef = useRef<((targetItemId: string) => Promise<void>) | null>(null);
-    const lastRevealedIdsRef = useRef<string[]>([]);
 
     // Track revealed items for initial load
     const initialLoadDone = useRef(false);
+
     const audioContextRef = useRef<AudioContext | null>(null);
 
     const playRevealSound = () => {
@@ -153,70 +152,79 @@ export default function ResultsPage() {
         });
     };
 
+    // Utility to generate a hash string for a rider's scores
+    const getScoreHash = (res: RiderResult) => {
+        let hash = `${res.riderId}:`;
+        DEFAULT_CONTEST_SETTINGS.evaluationItems.filter(i => i.enabled).forEach(item => {
+            const scores = res.judgeScores.flatMap(js => js.scores.filter(s => s.itemId === item.id).map(s => s.score));
+            hash += `${item.id}=${scores.join(',')};`;
+        });
+        hash += `aud=${res.audienceWeightedScore};`;
+        return hash;
+    };
+
     // === Fetch data WITHOUT updating display (background sync) ===
     const fetchDataSilent = useCallback(async () => {
         try {
-            const [scoresRes, settingsRes] = await Promise.all([
-                fetch('/api/scores', { cache: 'no-store' }),
-                fetch('/api/admin/settings', { cache: 'no-store' }),
-            ]);
-
+            const scoresRes = await fetch('/api/scores', { cache: 'no-store' });
             const scoresData = await scoresRes.json();
-            const settingsData = await settingsRes.json();
 
-            if (!scoresData.success || !settingsData.success) {
+            if (!scoresData.success) {
                 console.warn('[Results] Partial data fetch failed');
                 return;
             }
 
-            // Store latest data in refs (NOT in display state)
-            latestResultsRef.current = scoresData.data;
-            const freshSettings = settingsData.data as ContestSettings;
-            latestSettingsRef.current = freshSettings;
+            const currentResults = scoresData.data as RiderResult[];
+            latestResultsRef.current = currentResults;
 
-            // On initial load, sync display state immediately
+            // First load initialization
             if (!initialLoadDone.current) {
                 initialLoadDone.current = true;
-                setDisplayResults(scoresData.data);
-                setSettings(freshSettings);
+                setDisplayResults(currentResults);
+                setSettings(DEFAULT_CONTEST_SETTINGS);
 
-                const existingIds = freshSettings.revealedItemIds || [];
-                lastRevealedIdsRef.current = existingIds;
-                setBarRevealedIds(existingIds);
-                setDisplayedIds(existingIds);
-                setSortingIds(existingIds);
+                // Assuming all items with a score > 0 are already revealed
+                const allItemIds = [...DEFAULT_CONTEST_SETTINGS.evaluationItems.filter(i => i.enabled).map(i => i.id), 'audience'];
+                setBarRevealedIds(allItemIds);
+                setDisplayedIds(allItemIds);
+                setSortingIds(allItemIds);
+
+                const currentHashes: Record<string, string> = {};
+                currentResults.forEach(r => currentHashes[r.riderId] = getScoreHash(r));
+                lastScoreHashesRef.current = currentHashes;
+
                 setLoading(false);
-                console.log('[Results] Initial load complete:', existingIds.length, 'items already revealed');
                 return;
             }
 
-            // If NOT animating, sync display with latest data
+            // Detect score changes if not currently animating
             if (!isAnimatingRef.current) {
-                setDisplayResults(scoresData.data);
-                setSettings(freshSettings);
+                setSettings(DEFAULT_CONTEST_SETTINGS);
 
-                // Detect new reveals
-                const currentRevealed = freshSettings.revealedItemIds || [];
-                const lastRevealed = lastRevealedIdsRef.current;
+                let changedAny = false;
+                const newHashes: Record<string, string> = {};
 
-                // If items were reset (fewer items now)
-                if (currentRevealed.length < lastRevealed.length) {
-                    console.log('[Results] Items reset detected');
-                    setBarRevealedIds(currentRevealed);
-                    setDisplayedIds(currentRevealed);
-                    setSortingIds(currentRevealed);
-                    lastRevealedIdsRef.current = currentRevealed;
-                }
-                // If new items were revealed
-                else if (currentRevealed.length > lastRevealed.length) {
-                    // Find the first new item that isn't in our last revealed list
-                    const newId = currentRevealed.find(id => !lastRevealed.includes(id));
-                    if (newId && runAnimationRef.current) {
-                        console.log(`[Results] New reveal detected: ${newId}. Triggering animation.`);
-                        runAnimationRef.current(newId);
+                for (const res of currentResults) {
+                    const hash = getScoreHash(res);
+                    newHashes[res.riderId] = hash;
+
+                    if (lastScoreHashesRef.current[res.riderId] !== hash) {
+                        changedAny = true;
                     }
-                    lastRevealedIdsRef.current = currentRevealed;
                 }
+
+                if (changedAny) {
+                    // Start animation immediately if a new score comes in. 
+                    // To keep it simple without DB config, we'll animate ALL bars for the update.
+                    if (runAnimationRef.current) {
+                        console.log('[Results] Score change detected. Triggering animation update.');
+                        runAnimationRef.current('update');
+                    }
+                } else {
+                    setDisplayResults(currentResults);
+                }
+
+                lastScoreHashesRef.current = newHashes;
             }
         } catch (error) {
             console.error('[Results] fetchDataSilent error:', error);
@@ -224,56 +232,27 @@ export default function ResultsPage() {
     }, []);
 
     // === Run the animation sequence ===
-    const runAnimationSequence = useCallback(async (targetItemId: string) => {
+    const runAnimationSequence = useCallback(async (action: string) => {
         if (isAnimatingRef.current) {
-            console.log('[Animation] Already animating, ignoring trigger');
             return;
         }
-
-        console.log(`[Animation] Trigger received for item: ${targetItemId}`);
         isAnimatingRef.current = true;
 
         try {
-            // Step 0: Force-fetch latest results from DB
-            console.log('[Animation] Step 0: Fetching latest results...');
-            const [settingsRes, scoresRes] = await Promise.all([
-                fetch('/api/admin/settings', { cache: 'no-store' }),
-                fetch('/api/scores', { cache: 'no-store' }),
-            ]);
-
-            const settingsData = await settingsRes.json();
+            // Force-fetch latest results
+            const scoresRes = await fetch('/api/scores', { cache: 'no-store' });
             const scoresData = await scoresRes.json();
 
-            if (!settingsData.success || !scoresData.success) {
-                console.error('[Animation] Failed to fetch latest data');
+            if (!scoresData.success) {
                 isAnimatingRef.current = false;
                 return;
             }
 
-            const freshSettings = settingsData.data as ContestSettings;
-            setSettings(freshSettings);
+            setSettings(DEFAULT_CONTEST_SETTINGS);
             setDisplayResults(scoresData.data);
 
-            const newRevealedIds = freshSettings.revealedItemIds || [];
-
-            // Determine item name for the overlay
-            let itemName = '';
-            if (targetItemId === 'audience') {
-                itemName = 'AUDIENCE SCORE';
-            } else {
-                const item = freshSettings.evaluationItems.find(i => i.id === targetItemId);
-                itemName = item?.name || '';
-            }
-
-            if (!itemName) {
-                console.warn('[Animation] Item name not found for ID:', targetItemId);
-                // Fall through and just update display
-                setBarRevealedIds(newRevealedIds);
-                setDisplayedIds(newRevealedIds);
-                setSortingIds(newRevealedIds);
-                isAnimatingRef.current = false;
-                return;
-            }
+            // All items considered revealed since we're displaying everything based on scores having values
+            const allItems = [...DEFAULT_CONTEST_SETTINGS.evaluationItems.filter(i => i.enabled).map(i => i.id), 'audience'];
 
             const labelMs = LABEL_DISPLAY_TIME;
             const barMs = BAR_TRANSITION_SPEED;
@@ -282,43 +261,31 @@ export default function ResultsPage() {
 
             setAnimationSortDuration(sortDurationMs / 1000);
 
-            console.log(`[Animation] Starting sequence for: ${itemName}`);
-            console.log(`[Animation] Timing (Hard-coded): label=${labelMs}ms, bar=${barMs}ms, sortDelay=${sortDelayMs}ms, sortDuration=${sortDurationMs}ms`);
-
-            // Compute the "before" revealed IDs (without the target item)
-            const beforeIds = newRevealedIds.filter(id => id !== targetItemId);
-
-            // Ensure display starts from "before" state
-            setBarRevealedIds(beforeIds);
-            setDisplayedIds(beforeIds);
-            setSortingIds(beforeIds);
+            // Hide bars to show them growing
+            setBarRevealedIds([]);
+            setDisplayedIds([]);
 
             playRevealSound();
 
-            // Step 1: Show item name overlay
             console.log(`[Animation] Step 1: Label Display (${labelMs}ms)`);
-            setActiveHighlightItem(itemName);
-            setRevealingItem(itemName);
+            setActiveHighlightItem('SCORE UPDATE');
+            setRevealingItem('SCORE UPDATE');
             await wait(labelMs);
 
-            // Step 2: Hide overlay (transition)
             console.log('[Animation] Step 2: Label Fade Out');
             setRevealingItem(null);
             await wait(500);
 
-            // Step 3: Extend bars (reveal the new item's score)
             console.log(`[Animation] Step 3: Bar Extension (${barMs}ms)`);
-            setBarRevealedIds(newRevealedIds);
-            setDisplayedIds(newRevealedIds);
+            setBarRevealedIds(allItems);
+            setDisplayedIds(allItems);
             await wait(barMs);
 
-            // Step 4: Wait before sorting
             console.log(`[Animation] Step 4: Sort Wait (${sortDelayMs}ms)`);
             await wait(sortDelayMs);
 
-            // Step 5: Reorder ranks
             console.log(`[Animation] Step 5: Sort Animation (${sortDurationMs}ms)`);
-            setSortingIds(newRevealedIds);
+            setSortingIds(allItems);
             await wait(sortDurationMs);
 
             console.log('[Animation] Sequence Complete');
@@ -328,12 +295,8 @@ export default function ResultsPage() {
             console.error('[Animation] Sequence Error:', err);
         } finally {
             isAnimatingRef.current = false;
-            // Sync display with latest data after animation completes
             if (latestResultsRef.current.length > 0) {
                 setDisplayResults(latestResultsRef.current);
-            }
-            if (latestSettingsRef.current) {
-                setSettings(latestSettingsRef.current);
             }
         }
     }, [audioEnabled]);
@@ -452,32 +415,14 @@ export default function ResultsPage() {
                         <motion.div
                             key={ANIMATION_STYLE} // Ensure re-render when style changes
                             variants={{
-                                initial: ANIMATION_STYLE === 'Pop-in' ? { opacity: 0, scale: 0 } :
-                                    ANIMATION_STYLE === 'Slide' ? { x: '-100vw', opacity: 0, rotate: -10 } :
-                                        ANIMATION_STYLE === 'Flash' ? { opacity: 0, scale: 1.5 } :
-                                            { opacity: 0, scale: 0.9 },
-                                animate: ANIMATION_STYLE === 'Pop-in' ? { opacity: 1, scale: [0, 1.25, 1], rotate: [0, -5, 0] } :
-                                    ANIMATION_STYLE === 'Slide' ? { x: 0, opacity: 1, rotate: 0 } :
-                                        ANIMATION_STYLE === 'Flash' ? {
-                                            opacity: 1,
-                                            scale: 1,
-                                            filter: ['brightness(1)', 'brightness(10)', 'brightness(1)'],
-                                            textShadow: ['0 0 0px #fff', '0 0 50px #fff', '0 0 10px #fff']
-                                        } :
-                                            { opacity: 1, scale: 1 },
-                                exit: ANIMATION_STYLE === 'Pop-in' ? { opacity: 0, scale: 2, filter: 'blur(20px)' } :
-                                    ANIMATION_STYLE === 'Slide' ? { x: '100vw', opacity: 0, rotate: 10 } :
-                                        ANIMATION_STYLE === 'Flash' ? { opacity: 0, scale: 0.8, filter: 'blur(10px)' } :
-                                            { opacity: 0, scale: 1.1, filter: 'blur(10px)' }
+                                initial: { opacity: 0, scale: 0 },
+                                animate: { opacity: 1, scale: [0, 1.25, 1], rotate: [0, -5, 0] },
+                                exit: { opacity: 0, scale: 2, filter: 'blur(20px)' }
                             }}
                             initial="initial"
                             animate="animate"
                             exit="exit"
-                            transition={
-                                ANIMATION_STYLE === 'Slide'
-                                    ? { type: 'spring', damping: 12, stiffness: 90 }
-                                    : { duration: 0.5 }
-                            }
+                            transition={{ duration: 0.5 }}
                             className={`
                                 font-black tracking-tighter leading-none text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.8)] text-center px-4
                                 ${LABEL_FONT_SIZE_CLASS}
@@ -496,12 +441,11 @@ export default function ResultsPage() {
                     const isActive = item.name === activeHighlightItem;
                     return (
                         <motion.div
-                            key={item.id}
                             animate={isActive ? { scale: 1.3, y: -5 } : { scale: 1, y: 0 }}
-                            className={`flex items-center gap-2 transition-colors ${isActive ? 'text-[#fffa00]' : 'text-white'}`}
+                            className={`flex items-center gap-2 transition-colors ${isActive ? 'text-[#fffa00]' : 'text-zinc-500'}`}
                         >
                             <div
-                                className={`w-4 h-4 border-2 ${isActive ? 'border-[#fffa00] shadow-[0_0_10px_rgba(255,250,0,0.8)]' : 'border-white'}`}
+                                className={`w-4 h-4 border-2 ${isActive ? 'border-[#fffa00] shadow-[0_0_10px_rgba(255,250,0,0.8)]' : 'border-zinc-500'}`}
                                 style={{ backgroundColor: OUTDOOR_COLORS[i % OUTDOOR_COLORS.length] }}
                             />
                             <span className={`text-sm md:text-base font-black tracking-tight ${isActive ? 'drop-shadow-[0_0_8px_rgba(255,250,0,0.6)]' : ''}`}>

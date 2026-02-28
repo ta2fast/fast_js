@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ContestSettings, EvaluationItem } from '@/types';
+import { ContestSettings, EvaluationItem, DEFAULT_CONTEST_SETTINGS } from '@/types';
 import { calculateMaxJudgeScore } from '@/lib/scoring';
 import AdminHeader from '@/components/admin/AdminHeader';
 
@@ -15,16 +15,10 @@ export default function SettingsPage() {
     const [showItemModal, setShowItemModal] = useState(false);
     const router = useRouter();
 
-    const fetchSettings = useCallback(async () => {
-        try {
-            const res = await fetch('/api/admin/settings');
-            const data = await res.json();
-            if (data.success) setSettings(data.data);
-        } catch (error) {
-            console.error('Failed to fetch settings:', error);
-        } finally {
-            setLoading(false);
-        }
+    const fetchSettings = useCallback(() => {
+        // Fallback to default constants as DB table is removed
+        setSettings(DEFAULT_CONTEST_SETTINGS);
+        setLoading(false);
     }, []);
 
     useEffect(() => {
@@ -33,24 +27,14 @@ export default function SettingsPage() {
 
     async function saveSettings(updates: Partial<ContestSettings>) {
         setSaving(true);
-        try {
-            const res = await fetch('/api/admin/settings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updates),
-            });
-            const data = await res.json();
-            if (data.success) {
-                setSettings(data.data);
-            } else {
-                alert('保存に失敗しました');
+        // Mock save by just updating local state for now
+        // since the DB table 'settings' is not available
+        setTimeout(() => {
+            if (settings) {
+                setSettings({ ...settings, ...updates });
             }
-        } catch (error) {
-            console.error('Failed to save settings:', error);
-            alert('保存に失敗しました');
-        } finally {
             setSaving(false);
-        }
+        }, 300);
     }
 
     function handleItemEdit(item: EvaluationItem) {
