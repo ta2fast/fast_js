@@ -261,7 +261,6 @@ export default function ResultsPage() {
                 setDisplayedIds(newRevealedIds);
 
                 await wait(barMs);
-                setActiveHighlightItem(null);
 
                 // --- 自動順位入れ替え (Auto Sort) ---
                 console.log(`[Animation] Auto-Sort Wait (${sortDelayMs}ms)`);
@@ -274,6 +273,8 @@ export default function ResultsPage() {
                 setAnimationSortDuration(sortDurationMs / 1000);
                 setSortingIds(newRevealedIds);
                 await wait(sortDurationMs);
+
+                setActiveHighlightItem(null);
             }
             else if (eventType === 'sort_ranks') {
                 console.log(`[Animation] Sorting Ranks`);
