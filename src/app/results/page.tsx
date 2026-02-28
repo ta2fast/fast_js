@@ -58,6 +58,7 @@ export default function ResultsPage() {
     const [loading, setLoading] = useState(true);
     const [audioEnabled, setAudioEnabled] = useState(false);
     const [revealingItem, setRevealingItem] = useState<string | null>(null);
+    const [activeHighlightItem, setActiveHighlightItem] = useState<string | null>(null);
     const [barRevealedIds, setBarRevealedIds] = useState<string[]>([]);  // Stage 1: bars extend
     const [displayedIds, setDisplayedIds] = useState<string[]>([]);      // Stage 2: score confirmed
     const [sortingIds, setSortingIds] = useState<string[]>([]);          // Stage 3: rank reorder
@@ -184,6 +185,7 @@ export default function ResultsPage() {
                             const runSequence = async () => {
                                 try {
                                     // === Step A: Label Display ===
+                                    setActiveHighlightItem(itemName);
                                     setRevealingItem(itemName);
                                     await wait(labelMs);
 
@@ -203,6 +205,9 @@ export default function ResultsPage() {
                                     // === Step D: Sorting (Layout Transition) ===
                                     setSortingIds(newIds);
                                     await wait(sortDurationMs);
+
+                                    // Final Step: Clear high-visibility highlight in Legend
+                                    setActiveHighlightItem(null);
                                 } finally {
                                     animatingRef.current = false;
                                 }
@@ -371,7 +376,7 @@ export default function ResultsPage() {
             {/* High-visibility Legend */}
             <div className="flex justify-end gap-x-8 mb-6 opacity-90 border-b border-white/20 pb-4 h-12 items-end">
                 {enabledItems.map((item, i) => {
-                    const isActive = item.name === revealingItem;
+                    const isActive = item.name === activeHighlightItem;
                     return (
                         <motion.div
                             key={item.id}
@@ -389,11 +394,11 @@ export default function ResultsPage() {
                     );
                 })}
                 <motion.div
-                    animate={revealingItem === 'AUDIENCE SCORE' ? { scale: 1.3, y: -5 } : { scale: 1, y: 0 }}
-                    className={`flex items-center gap-2 transition-colors ${revealingItem === 'AUDIENCE SCORE' ? 'text-[#fffa00]' : 'text-white'}`}
+                    animate={activeHighlightItem === 'AUDIENCE SCORE' ? { scale: 1.3, y: -5 } : { scale: 1, y: 0 }}
+                    className={`flex items-center gap-2 transition-colors ${activeHighlightItem === 'AUDIENCE SCORE' ? 'text-[#fffa00]' : 'text-white'}`}
                 >
-                    <div className={`w-4 h-4 border-2 ${revealingItem === 'AUDIENCE SCORE' ? 'border-[#fffa00] shadow-[0_0_10px_rgba(255,250,0,0.8)]' : 'border-white'} bg-[#f87171]`} />
-                    <span className={`text-sm md:text-base font-black tracking-tight ${revealingItem === 'AUDIENCE SCORE' ? 'drop-shadow-[0_0_8px_rgba(255,250,0,0.6)]' : ''}`}>
+                    <div className={`w-4 h-4 border-2 ${activeHighlightItem === 'AUDIENCE SCORE' ? 'border-[#fffa00] shadow-[0_0_10px_rgba(255,250,0,0.8)]' : 'border-white'} bg-[#f87171]`} />
+                    <span className={`text-sm md:text-base font-black tracking-tight ${activeHighlightItem === 'AUDIENCE SCORE' ? 'drop-shadow-[0_0_8px_rgba(255,250,0,0.6)]' : ''}`}>
                         Audience
                     </span>
                 </motion.div>
