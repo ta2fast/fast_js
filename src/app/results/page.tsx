@@ -7,7 +7,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     RiderResult,
     ContestSettings,
+    AnimationSettings,
 } from '@/types';
+import { supabase } from '@/lib/supabase';
 
 // Outdoor-optimized high-contrast neon palette
 const OUTDOOR_COLORS = [
@@ -159,7 +161,7 @@ export default function ResultsPage() {
                     console.log(`[Results] Settings Change Detected: Style=${newSettings.animationStyle}, Size=${newSettings.labelFontSize}`);
                 }
 
-                setSettings(newSettings);
+                // setSettings(newSettings); // Removed redundant call here, will set after merging
                 const newIds = newSettings.revealedItemIds || [];
                 const newCount = newIds.length;
 
@@ -256,9 +258,28 @@ export default function ResultsPage() {
                 }
                 // If newCount === prevRevealedCount.current AND animating, do nothing (let timeouts finish)
 
-                prevRevealedCount.current = newCount;
+                // prevRevealedCount.current = newCount; // Move this to after the sequence starts or logic finishes
                 prevRevealedIds.current = newIds;
+
+                // Merge with animation settings from dedicated table if available
+                try {
+                    const animRes = await fetch('/api/admin/animation-settings', { cache: 'no-store' });
+                    const animData = await animRes.json();
+                    if (animData.success && animData.data) {
+                        const s = animData.data as AnimationSettings;
+                        newSettings.animationDelayLabelMs = Number(s.label_display_time) * 1000;
+                        newSettings.animationBarDurationMs = Number(s.bar_transition_speed) * 1000;
+                        newSettings.animationSortDelayMs = Number(s.sort_delay_time) * 1000;
+                        newSettings.animationSortDurationMs = Number(s.sort_transition_speed) * 1000;
+                        newSettings.animationStyle = s.animation_style;
+                        newSettings.labelFontSize = s.label_font_size;
+                    }
+                } catch (e) {
+                    console.warn('[Results] Failed to fetch dedicated animation settings, using fallbacks.', e);
+                }
+
                 setSettings(newSettings);
+                prevRevealedCount.current = newCount;
             }
         } catch (error) {
             console.error('Failed to fetch results data:', error);
@@ -270,8 +291,38 @@ export default function ResultsPage() {
     useEffect(() => {
         fetchData();
         const interval = setInterval(fetchData, 3000); // 3s update
-        return () => clearInterval(interval);
-    }, [audioEnabled, settings]);
+
+        // Real-time subscription for animation settings
+        const channel = supabase
+            .channel('realtime:animation_settings')
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'animation_settings',
+                filter: 'id=eq.1'
+            }, (payload) => {
+                console.log('[Results] Real-time Animation Settings Update:', payload.new);
+                const newData = payload.new as AnimationSettings;
+                setSettings(prev => {
+                    if (!prev) return null;
+                    return {
+                        ...prev,
+                        animationDelayLabelMs: Number(newData.label_display_time) * 1000,
+                        animationBarDurationMs: Number(newData.bar_transition_speed) * 1000,
+                        animationSortDelayMs: Number(newData.sort_delay_time) * 1000,
+                        animationSortDurationMs: Number(newData.sort_transition_speed) * 1000,
+                        animationStyle: newData.animation_style,
+                        labelFontSize: newData.label_font_size,
+                    };
+                });
+            })
+            .subscribe();
+
+        return () => {
+            clearInterval(interval);
+            supabase.removeChannel(channel);
+        };
+    }, []); // Only on mount, fetchData handles the rest
 
     const processedRankings = useMemo(() => {
         if (!settings || results.length === 0) return [];

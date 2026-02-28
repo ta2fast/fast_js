@@ -11,7 +11,9 @@ import {
     Judge,
     LogEntry,
     DEFAULT_CONTEST_SETTINGS,
-    EvaluationItem
+    EvaluationItem,
+    AnimationSettings,
+    DEFAULT_ANIMATION_SETTINGS
 } from '@/types';
 
 // ==============================
@@ -458,7 +460,7 @@ export async function getSettings(): Promise<ContestSettings> {
             };
         }
 
-        return {
+        const baseSettings = {
             id: data.id,
             evaluationItems: data.evaluation_items as EvaluationItem[],
             audienceWeight: parseFloat(data.audience_weight),
@@ -479,9 +481,85 @@ export async function getSettings(): Promise<ContestSettings> {
             animationStyle: animConfig.style ?? DEFAULT_CONTEST_SETTINGS.animationStyle,
             labelFontSize: animConfig.fontSize ?? DEFAULT_CONTEST_SETTINGS.labelFontSize,
         };
+
+        // NEW: Check 'animation_settings' table (ID=1) for more specific/real-time animation settings
+        try {
+            const { data: animData } = await supabase
+                .from('animation_settings')
+                .select('*')
+                .eq('id', 1)
+                .maybeSingle();
+
+            if (animData) {
+                baseSettings.animationDelayLabelMs = Number(animData.label_display_time) * 1000;
+                baseSettings.animationBarDurationMs = Number(animData.bar_transition_speed) * 1000;
+                baseSettings.animationSortDelayMs = Number(animData.sort_delay_time) * 1000;
+                baseSettings.animationSortDurationMs = Number(animData.sort_transition_speed) * 1000;
+                baseSettings.animationStyle = animData.animation_style as any;
+                baseSettings.labelFontSize = animData.label_font_size as any;
+            }
+        } catch (e) {
+            console.warn('Dedicated animation settings table fetch failed, using contest_settings fallbacks.', e);
+        }
+
+        return baseSettings;
     } catch (err) {
         console.error('Failed to fetch settings:', err);
         return { ...DEFAULT_CONTEST_SETTINGS };
+    }
+}
+
+export async function getAnimationSettings(): Promise<AnimationSettings> {
+    try {
+        const { data, error } = await supabase
+            .from('animation_settings')
+            .select('*')
+            .eq('id', 1)
+            .maybeSingle();
+
+        if (error) throw error;
+        if (!data) {
+            // Initialize with defaults if missing
+            const { data: inserted, error: insertError } = await supabase
+                .from('animation_settings')
+                .insert([{
+                    id: 1,
+                    label_display_time: 3.0,
+                    bar_transition_speed: 3.0,
+                    sort_delay_time: 3.0,
+                    sort_transition_speed: 0.8,
+                    animation_style: 'Standard',
+                    label_font_size: 'Medium'
+                }])
+                .select()
+                .single();
+            if (insertError) throw insertError;
+            return inserted as AnimationSettings;
+        }
+        return data as AnimationSettings;
+    } catch (err) {
+        console.error('getAnimationSettings error:', err);
+        return DEFAULT_ANIMATION_SETTINGS;
+    }
+}
+
+export async function updateAnimationSettings(updates: Partial<AnimationSettings>): Promise<AnimationSettings> {
+    try {
+        const { data, error } = await supabase
+            .from('animation_settings')
+            .upsert({
+                id: 1,
+                ...updates,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'id' })
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data as AnimationSettings;
+    } catch (err) {
+        console.error('updateAnimationSettings error:', err);
+        throw err;
     }
 }
 

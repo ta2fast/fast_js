@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ContestSettings, EvaluationItem, ApiResponse } from '@/types';
+import { ContestSettings, EvaluationItem, ApiResponse, AnimationSettings } from '@/types';
 
 export default function ResultsControlPage() {
     const [settings, setSettings] = useState<ContestSettings | null>(null);
@@ -21,23 +21,31 @@ export default function ResultsControlPage() {
 
     const fetchSettings = async () => {
         try {
+            // Fetch animation settings from dedicated table
+            const animRes = await fetch('/api/admin/animation-settings');
+            const animData: ApiResponse<AnimationSettings> = await animRes.json();
+
+            if (animData.success && animData.data) {
+                const s = animData.data;
+                setLabelDelaySec(Number(s.label_display_time));
+                setBarDurationSec(Number(s.bar_transition_speed));
+                setSortDelaySec(Number(s.sort_delay_time));
+                setSortDurationSec(Number(s.sort_transition_speed));
+                setAnimationStyle(s.animation_style || 'Standard');
+                setLabelFontSize(s.label_font_size || 'Medium');
+            }
+
+            // Fetch general contest settings (for revealed items)
             const res = await fetch('/api/admin/settings');
             const data: ApiResponse<ContestSettings> = await res.json();
             if (data.success && data.data) {
-                const s = data.data;
-                setSettings(s);
-                setLabelDelaySec((s.animationDelayLabelMs ?? 3000) / 1000);
-                setBarDurationSec((s.animationBarDurationMs ?? 3000) / 1000);
-                setSortDelaySec((s.animationSortDelayMs ?? 3000) / 1000);
-                setSortDurationSec((s.animationSortDurationMs ?? 800) / 1000);
-                setAnimationStyle(s.animationStyle || 'Standard');
-                setLabelFontSize(s.labelFontSize || 'Medium');
+                setSettings(data.data);
             } else {
                 alert(`設定の読み込みに失敗しました: ${data.error || '不明なエラー'}`);
             }
         } catch (error) {
             console.error('Failed to fetch settings:', error);
-            alert('通信エラーが発生しました。サーバーの状態を確認してください。');
+            alert('通信エラーが発生しました。');
         } finally {
             setLoading(false);
         }
@@ -67,29 +75,28 @@ export default function ResultsControlPage() {
     };
 
     async function updateAnimationDelays(labelS: number, barS: number, sortDelayS: number, sortDurationS: number, style: string, size: string) {
-        if (!settings) return;
         setUpdating(true);
         try {
-            const res = await fetch('/api/admin/settings', {
+            const res = await fetch('/api/admin/animation-settings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    animationDelayLabelMs: Math.round(labelS * 1000),
-                    animationBarDurationMs: Math.round(barS * 1000),
-                    animationSortDelayMs: Math.round(sortDelayS * 1000),
-                    animationSortDurationMs: Math.round(sortDurationS * 1000),
-                    animationStyle: style,
-                    labelFontSize: size,
+                    label_display_time: labelS,
+                    bar_transition_speed: barS,
+                    sort_delay_time: sortDelayS,
+                    sort_transition_speed: sortDurationS,
+                    animation_style: style,
+                    label_font_size: size,
                 }),
             });
-            const data: ApiResponse<ContestSettings> = await res.json();
-            if (data.success && data.data) {
-                setSettings(data.data);
+            const data: ApiResponse<AnimationSettings> = await res.json();
+            if (data.success) {
+                alert('アニメーション設定を保存しました。');
             } else {
                 alert(`更新に失敗しました: ${data.error || '不明なエラー'}`);
             }
         } catch (error) {
-            console.error('Failed to update animation delays:', error);
+            console.error('Failed to update animation settings:', error);
             alert('通信エラーが発生しました。');
         } finally {
             setUpdating(false);
