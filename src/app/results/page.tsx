@@ -8,6 +8,7 @@ import {
     RiderResult,
     ContestSettings,
     DEFAULT_CONTEST_SETTINGS,
+    ApiResponse,
 } from '@/types';
 import { supabase } from '@/lib/supabase';
 
@@ -76,13 +77,9 @@ export default function ResultsPage() {
     const [animationSortDuration, setAnimationSortDuration] = useState(0.8);
 
     const latestResultsRef = useRef<RiderResult[]>([]);
-    const lastScoreHashesRef = useRef<Record<string, string>>({});
 
     // === Animation lock ===
     const isAnimatingRef = useRef(false);
-
-    // Ref to hold runAnimationSequence for polling fallback
-    const runAnimationRef = useRef<((targetItemId: string) => Promise<void>) | null>(null);
 
     // Track revealed items for initial load
     const initialLoadDone = useRef(false);
@@ -152,16 +149,7 @@ export default function ResultsPage() {
         });
     };
 
-    // Utility to generate a hash string for a rider's scores
-    const getScoreHash = (res: RiderResult) => {
-        let hash = `${res.riderId}:`;
-        DEFAULT_CONTEST_SETTINGS.evaluationItems.filter(i => i.enabled).forEach(item => {
-            const scores = res.judgeScores.flatMap(js => js.scores.filter(s => s.itemId === item.id).map(s => s.score));
-            hash += `${item.id}=${scores.join(',')};`;
-        });
-        hash += `aud=${res.audienceWeightedScore};`;
-        return hash;
-    };
+
 
     // === Fetch data WITHOUT updating display (background sync) ===
     const fetchDataSilent = useCallback(async () => {
@@ -183,137 +171,99 @@ export default function ResultsPage() {
                 setDisplayResults(currentResults);
                 setSettings(DEFAULT_CONTEST_SETTINGS);
 
-                // Assuming all items with a score > 0 are already revealed
-                const allItemIds = [...DEFAULT_CONTEST_SETTINGS.evaluationItems.filter(i => i.enabled).map(i => i.id), 'audience'];
-                setBarRevealedIds(allItemIds);
-                setDisplayedIds(allItemIds);
-                setSortingIds(allItemIds);
-
-                const currentHashes: Record<string, string> = {};
-                currentResults.forEach(r => currentHashes[r.riderId] = getScoreHash(r));
-                lastScoreHashesRef.current = currentHashes;
+                // Start with all bars hidden (0%) and 0 scores displayed
+                setBarRevealedIds([]);
+                setDisplayedIds([]);
+                setSortingIds([]);
 
                 setLoading(false);
                 return;
             }
 
-            // Detect score changes if not currently animating
-            if (!isAnimatingRef.current) {
-                setSettings(DEFAULT_CONTEST_SETTINGS);
+            // Sync latest results silently in background
+            setDisplayResults(currentResults);
 
-                let changedAny = false;
-                const newHashes: Record<string, string> = {};
-
-                for (const res of currentResults) {
-                    const hash = getScoreHash(res);
-                    newHashes[res.riderId] = hash;
-
-                    if (lastScoreHashesRef.current[res.riderId] !== hash) {
-                        changedAny = true;
-                    }
-                }
-
-                if (changedAny) {
-                    // Start animation immediately if a new score comes in. 
-                    // To keep it simple without DB config, we'll animate ALL bars for the update.
-                    if (runAnimationRef.current) {
-                        console.log('[Results] Score change detected. Triggering animation update.');
-                        runAnimationRef.current('update');
-                    }
-                } else {
-                    setDisplayResults(currentResults);
-                }
-
-                lastScoreHashesRef.current = newHashes;
-            }
         } catch (error) {
             console.error('[Results] fetchDataSilent error:', error);
         }
     }, []);
 
-    // === Run the animation sequence ===
-    const runAnimationSequence = useCallback(async (action: string) => {
-        if (isAnimatingRef.current) {
-            return;
-        }
-        isAnimatingRef.current = true;
+    // === Handle Broadcast Action ===
+    const handleBroadcastEvent = useCallback(async (payload: any) => {
+        if (isAnimatingRef.current) return;
 
         try {
-            // Force-fetch latest results
-            const scoresRes = await fetch('/api/scores', { cache: 'no-store' });
-            const scoresData = await scoresRes.json();
+            isAnimatingRef.current = true;
+            // Force data refresh before animation
+            await fetchDataSilent();
 
-            if (!scoresData.success) {
-                isAnimatingRef.current = false;
-                return;
-            }
-
-            setSettings(DEFAULT_CONTEST_SETTINGS);
-            setDisplayResults(scoresData.data);
-
-            // All items considered revealed since we're displaying everything based on scores having values
-            const allItems = [...DEFAULT_CONTEST_SETTINGS.evaluationItems.filter(i => i.enabled).map(i => i.id), 'audience'];
+            const eventType = payload.event;
+            const data = payload.payload;
 
             const labelMs = LABEL_DISPLAY_TIME;
             const barMs = BAR_TRANSITION_SPEED;
-            const sortDelayMs = SORT_DELAY_TIME;
             const sortDurationMs = SORT_TRANSITION_SPEED;
 
-            setAnimationSortDuration(sortDurationMs / 1000);
+            if (eventType === 'reveal_item') {
+                const { itemId, itemName } = data;
+                playRevealSound();
 
-            // Hide bars to show them growing
-            setBarRevealedIds([]);
-            setDisplayedIds([]);
+                console.log(`[Animation] Revealing: ${itemName}`);
+                setActiveHighlightItem(itemName);
+                setRevealingItem(itemName);
+                await wait(labelMs);
 
-            playRevealSound();
+                setRevealingItem(null);
+                await wait(500); // small pause after label disappears
 
-            console.log(`[Animation] Step 1: Label Display (${labelMs}ms)`);
-            setActiveHighlightItem('SCORE UPDATE');
-            setRevealingItem('SCORE UPDATE');
-            await wait(labelMs);
+                // Extend only this specific bar and update score
+                setBarRevealedIds(prev => [...new Set([...prev, itemId])]);
+                setDisplayedIds(prev => [...new Set([...prev, itemId])]);
 
-            console.log('[Animation] Step 2: Label Fade Out');
-            setRevealingItem(null);
-            await wait(500);
-
-            console.log(`[Animation] Step 3: Bar Extension (${barMs}ms)`);
-            setBarRevealedIds(allItems);
-            setDisplayedIds(allItems);
-            await wait(barMs);
-
-            console.log(`[Animation] Step 4: Sort Wait (${sortDelayMs}ms)`);
-            await wait(sortDelayMs);
-
-            console.log(`[Animation] Step 5: Sort Animation (${sortDurationMs}ms)`);
-            setSortingIds(allItems);
-            await wait(sortDurationMs);
-
-            console.log('[Animation] Sequence Complete');
-            setActiveHighlightItem(null);
+                await wait(barMs);
+                setActiveHighlightItem(null);
+            }
+            else if (eventType === 'sort_ranks') {
+                console.log(`[Animation] Sorting Ranks`);
+                setAnimationSortDuration(sortDurationMs / 1000);
+                // Copy displayedIds to sortingIds to trigger reorder
+                setSortingIds(prev => [...new Set([...barRevealedIds])]);
+                await wait(sortDurationMs);
+            }
+            else if (eventType === 'reset') {
+                console.log(`[Animation] Resetting display`);
+                setBarRevealedIds([]);
+                setDisplayedIds([]);
+                setSortingIds([]);
+            }
 
         } catch (err) {
-            console.error('[Animation] Sequence Error:', err);
+            console.error('[Animation] Broadcast Event Error:', err);
         } finally {
             isAnimatingRef.current = false;
-            if (latestResultsRef.current.length > 0) {
-                setDisplayResults(latestResultsRef.current);
-            }
         }
-    }, [audioEnabled]);
+    }, [audioEnabled, fetchDataSilent, barRevealedIds]);
 
-    // Keep the ref in sync with the latest runAnimationSequence
+    // Setup Realtime Listener
     useEffect(() => {
-        runAnimationRef.current = runAnimationSequence;
-    }, [runAnimationSequence]);
-
-    useEffect(() => {
+        // Initial fetch
         fetchDataSilent();
-        const interval = setInterval(fetchDataSilent, 3000); // 3s background sync
+
+        // Listen to Broadcast from Admin Results Control
+        const channel = supabase.channel('animation_control')
+            .on('broadcast', { event: 'reveal_item' }, (payload) => handleBroadcastEvent(payload))
+            .on('broadcast', { event: 'sort_ranks' }, (payload) => handleBroadcastEvent(payload))
+            .on('broadcast', { event: 'reset' }, (payload) => handleBroadcastEvent(payload))
+            .subscribe((status) => {
+                if (status === 'SUBSCRIBED') {
+                    console.log('[Results] Subscribed to animation_control channel');
+                }
+            });
 
         return () => {
-            clearInterval(interval);
+            supabase.removeChannel(channel);
         };
-    }, [fetchDataSilent]);
+    }, [fetchDataSilent, handleBroadcastEvent]);
 
     const processedRankings = useMemo(() => {
         if (!settings || displayResults.length === 0) return [];

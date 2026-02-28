@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ContestSettings, DEFAULT_CONTEST_SETTINGS } from '@/types';
+import { supabase } from '@/lib/supabase';
 
 export default function ResultsControlPage() {
     const [settings, setSettings] = useState<ContestSettings | null>(null);
@@ -19,41 +20,40 @@ export default function ResultsControlPage() {
         setLoading(false);
     };
 
-    const updateReveals = async (newRevealedIds: string[]) => {
-        if (!settings) return;
+    const triggerRevealItem = (itemId: string, itemName: string) => {
         setUpdating(true);
-        // Mock update: since DB sync is removed and animations rely on Score Update,
-        // this control interface is only a local visual toggle now.
-        setTimeout(() => {
-            setSettings({
-                ...settings,
-                revealedItemIds: newRevealedIds
-            });
-            setUpdating(false);
-        }, 300);
+        // Payload 送信
+        supabase.channel('animation_control').send({
+            type: 'broadcast',
+            event: 'reveal_item',
+            payload: { itemId, itemName }
+        }).then(() => {
+            setTimeout(() => setUpdating(false), 300);
+        });
     };
 
-    const toggleItem = (itemId: string) => {
-        if (!settings) return;
-        const current = settings.revealedItemIds || [];
-        const next = current.includes(itemId)
-            ? current.filter(id => id !== itemId)
-            : [...current, itemId];
-        updateReveals(next);
+    const triggerSortRanks = () => {
+        setUpdating(true);
+        supabase.channel('animation_control').send({
+            type: 'broadcast',
+            event: 'sort_ranks',
+            payload: {}
+        }).then(() => {
+            setTimeout(() => setUpdating(false), 300);
+        });
     };
 
-    const revealAll = () => {
-        if (!settings) return;
-        const allIds = [
-            ...settings.evaluationItems.map(item => item.id),
-            'audience'
-        ];
-        updateReveals(allIds);
+    const triggerReset = () => {
+        setUpdating(true);
+        supabase.channel('animation_control').send({
+            type: 'broadcast',
+            event: 'reset',
+            payload: {}
+        }).then(() => {
+            setTimeout(() => setUpdating(false), 300);
+        });
     };
 
-    const hideAll = () => {
-        updateReveals([]);
-    };
 
     if (loading) {
         return (
@@ -88,83 +88,63 @@ export default function ResultsControlPage() {
                             表示コントロール
                         </h2>
 
-                        <div className="flex flex-wrap gap-4 mb-8">
-                            <button
-                                onClick={revealAll}
-                                disabled={updating}
-                                className="btn btn-primary flex-1 shadow-lg shadow-[var(--secondary)]/20"
-                            >
-                                全て表示
-                            </button>
-                            <button
-                                onClick={hideAll}
-                                disabled={updating}
-                                className="btn btn-outline flex-1 border-dashed"
-                            >
-                                全て非表示
-                            </button>
-                        </div>
-
-                        <div className="grid gap-3">
+                        <div className="grid gap-3 mb-8">
                             {evaluationItems.map((item) => {
-                                const isRevealed = revealedIds.includes(item.id);
                                 return (
                                     <button
                                         key={item.id}
-                                        onClick={() => toggleItem(item.id)}
+                                        onClick={() => triggerRevealItem(item.id, item.name)}
                                         disabled={updating}
-                                        className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${isRevealed
-                                            ? 'border-[var(--secondary)] bg-[var(--secondary-light)] shadow-sm'
-                                            : 'border-[var(--surface-light)] bg-transparent opacity-60 grayscale hover:opacity-100'
-                                            }`}
+                                        className="flex items-center justify-between p-4 rounded-xl border-2 border-[var(--secondary)] bg-[var(--secondary-light)] shadow-sm hover:brightness-110 active:scale-95 transition-all text-left"
                                     >
                                         <div className="flex items-center gap-4">
-                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${isRevealed ? 'bg-[var(--secondary)] text-white' : 'bg-slate-200 text-slate-500'
-                                                }`}>
+                                            <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold bg-[var(--secondary)] text-white">
                                                 {item.order}
                                             </div>
-                                            <span className="text-xl font-bold">{item.name}</span>
-                                        </div>
-                                        <div className={`px-4 py-1 rounded-full text-sm font-bold ${isRevealed ? 'bg-white text-[var(--secondary)]' : 'bg-slate-100 text-slate-400'
-                                            }`}>
-                                            {isRevealed ? '表示中' : '非表示'}
+                                            <span className="text-xl font-bold">『{item.name}』をアニメーション発表</span>
                                         </div>
                                     </button>
                                 );
                             })}
 
                             <button
-                                onClick={() => toggleItem('audience')}
+                                onClick={() => triggerRevealItem('audience', '観客投票点')}
                                 disabled={updating}
-                                className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${revealedIds.includes('audience')
-                                    ? 'border-[var(--secondary)] bg-[var(--secondary-light)] shadow-sm'
-                                    : 'border-[var(--surface-light)] bg-transparent opacity-60 grayscale hover:opacity-100'
-                                    }`}
+                                className="flex items-center justify-between p-4 rounded-xl border-2 border-[#f87171] bg-[#f87171]/10 shadow-sm hover:brightness-110 active:scale-95 transition-all text-left"
                             >
                                 <div className="flex items-center gap-4">
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${revealedIds.includes('audience') ? 'bg-[var(--secondary)] text-white' : 'bg-slate-200 text-slate-500'
-                                        }`}>
+                                    <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold bg-[#f87171] text-white">
                                         👥
                                     </div>
-                                    <span className="text-xl font-bold">観客投票点</span>
-                                </div>
-                                <div className={`px-4 py-1 rounded-full text-sm font-bold ${revealedIds.includes('audience') ? 'bg-white text-[var(--secondary)]' : 'bg-slate-100 text-slate-400'
-                                    }`}>
-                                    {revealedIds.includes('audience') ? '表示中' : '非表示'}
+                                    <span className="text-xl font-bold text-[#f87171]">『観客投票点』をアニメーション発表</span>
                                 </div>
                             </button>
                         </div>
-                    </section>
 
+                        <div className="border-t border-[var(--surface-border)] pt-8 mt-4">
+                            <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-[var(--primary)]">
+                                <span className="w-2 h-6 bg-[var(--primary)] rounded-full"></span>
+                                最終結果
+                            </h2>
+                            <button
+                                onClick={triggerSortRanks}
+                                disabled={updating}
+                                className="w-full btn btn-primary py-6 text-2xl shadow-[0_0_20px_rgba(255,250,0,0.3)] hover:scale-[1.02] active:scale-95 transition-all outline-none border-2 border-[#fffa00]"
+                            >
+                                🏆 最終順位の入れ替えを実行 🏆
+                            </button>
+                        </div>
+                    </section>
 
                     <aside className="p-4 bg-[var(--surface-light)] rounded-xl border border-[var(--surface-border)]">
                         <h3 className="font-bold mb-2 flex items-center gap-2">
                             <span className="text-amber-500">💡</span> 使い方
                         </h3>
-                        <ul className="text-sm text-[var(--text-muted)] space-y-1 list-disc list-inside">
-                            <li><strong>注意:</strong> 現在のシステムでは、アニメーションは「スコアの更新」に連動して自動実行されるよう設定されています。</li>
-                            <li>この画面の表示切り替えボタンは、現在データベースと連動していません。</li>
-                            <li>スコア入力画面（/admin/scores）で点数を入力・更新すると、自動的にリザルト画面でアニメーションが実行されます。</li>
+                        <ul className="text-sm text-[var(--text-muted)] space-y-2 list-disc list-inside">
+                            <li><strong>手順1:</strong> スコア入力画面で先に全点数を入力してください。</li>
+                            <li><strong>手順2:</strong> リザルト画面には最初「0点」の状態で順位が表示されています。</li>
+                            <li><strong>手順3:</strong> 上のボタンを押すと、その項目だけのバーが伸びて部分的に合計点が更新されます。</li>
+                            <li><strong>手順4:</strong> この段階では順位は入れ替わりません。全て発表後、「最終順位の入れ替えを実行」ボタンを押してください。</li>
                         </ul>
                     </aside>
                 </div>
