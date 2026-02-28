@@ -1,5 +1,7 @@
 'use client';
 
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -59,6 +61,7 @@ export default function ResultsPage() {
     const [barRevealedIds, setBarRevealedIds] = useState<string[]>([]);  // Stage 1: bars extend
     const [displayedIds, setDisplayedIds] = useState<string[]>([]);      // Stage 2: score confirmed
     const [sortingIds, setSortingIds] = useState<string[]>([]);          // Stage 3: rank reorder
+    const [animationSortDuration, setAnimationSortDuration] = useState(0.8);
 
     // Track revealed items to play sound only on "new" reveals
     const prevRevealedCount = useRef(0);
@@ -167,39 +170,41 @@ export default function ResultsPage() {
                         }
 
                         if (itemName) {
-                            setRevealingItem(itemName);
-
-                            // Clear any existing timeouts to prevent race conditions on rapid clicks
-                            if (barTimeoutRef.current) clearTimeout(barTimeoutRef.current);
-                            if (displayTimeoutRef.current) clearTimeout(displayTimeoutRef.current);
-                            if (sortTimeoutRef.current) clearTimeout(sortTimeoutRef.current);
-
-                            const labelDelay = newSettings.animationDelayLabelMs ?? 3000;
-                            const barDuration = newSettings.animationDelayBarMs ?? 3000;
-                            const sortDelay = newSettings.animationDelaySortMs ?? 3000;
-
-                            // Auto-hide the "Now Revealing" label after it finishes talking
-                            setTimeout(() => setRevealingItem(null), labelDelay + barDuration + 500);
-
                             // Mark animation as in progress
                             animatingRef.current = true;
 
-                            // === 3-Stage Animation Sequence (Strict Timing) ===
+                            const labelMs = newSettings.animationDelayLabelMs ?? 3000;
+                            const barMs = newSettings.animationBarDurationMs ?? 3000;
+                            const sortDelayMs = newSettings.animationSortDelayMs ?? 3000;
+                            const sortDurationMs = newSettings.animationSortDurationMs ?? 800;
 
-                            // Stage 1 (0s): Label only — handled by revealingItem state above.
-                            // We do NOT update barRevealedIds or displayedIds yet.
+                            setAnimationSortDuration(sortDurationMs / 1000);
 
-                            // Stage 2: Bar start extension AND Score start counting simultaneously
-                            displayTimeoutRef.current = setTimeout(() => {
-                                setBarRevealedIds(newIds);
-                                setDisplayedIds(newIds);
-                            }, labelDelay);
+                            // Sequence execution loop
+                            const runSequence = async () => {
+                                try {
+                                    // Step A: Label Display
+                                    setRevealingItem(itemName);
+                                    await wait(labelMs);
+                                    setRevealingItem(null);
 
-                            // Stage 3: All items finished — Perform sorting
-                            sortTimeoutRef.current = setTimeout(() => {
-                                setSortingIds(newIds);
-                                animatingRef.current = false;
-                            }, labelDelay + barDuration + sortDelay);
+                                    // Step B: Bar Extension & Counter
+                                    setBarRevealedIds(newIds);
+                                    setDisplayedIds(newIds);
+                                    await wait(barMs);
+
+                                    // Step C: Sort Delay (Confirmation Pause)
+                                    await wait(sortDelayMs);
+
+                                    // Step D: Sorting (Layout Transition)
+                                    setSortingIds(newIds);
+                                    await wait(sortDurationMs);
+                                } finally {
+                                    animatingRef.current = false;
+                                }
+                            };
+
+                            runSequence();
                         } else {
                             // Fallback if no item matched
                             setBarRevealedIds(newIds);
@@ -400,7 +405,7 @@ export default function ResultsPage() {
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.9 }}
                             transition={{
-                                layout: { type: 'spring', damping: 25, stiffness: 120, mass: 0.8 },
+                                layout: { type: 'spring', damping: 25, stiffness: 120, mass: 0.8, duration: animationSortDuration },
                                 opacity: { duration: 0.3 }
                             }}
                             className={`relative flex items-center gap-4 ${index < 3 ? 'flex-[1.3] py-2 md:py-3' : 'flex-1 py-1 md:py-2'} min-h-0 bg-zinc-900/40 rounded-lg pr-4 border-l-[12px] ${index < 3 ? 'shadow-[0_0_20px_rgba(255,250,0,0.2)]' : ''}`}
@@ -437,7 +442,7 @@ export default function ResultsPage() {
                                         }}
                                         transition={{
                                             type: 'tween',
-                                            duration: (settings.animationDelayBarMs ?? 3000) / 1000,
+                                            duration: (settings.animationBarDurationMs ?? 3000) / 1000,
                                             ease: 'easeOut'
                                         }}
                                         style={{
@@ -464,7 +469,7 @@ export default function ResultsPage() {
                                 <div className={`${index < 3 ? 'text-3xl md:text-5xl' : 'text-2xl md:text-4xl'} font-bold tracking-tight text-[#fffa00] drop-shadow-[0_0_10px_rgba(255,250,0,0.5)]`}>
                                     <AnimatedCounter
                                         value={res.currentDisplayedScore}
-                                        duration={settings.animationDelayBarMs ?? 3000}
+                                        duration={settings.animationBarDurationMs ?? 3000}
                                     />
                                 </div>
                             </div>

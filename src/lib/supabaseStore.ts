@@ -402,14 +402,30 @@ export async function getSettings(): Promise<ContestSettings> {
         const rawRevealedIds = data.revealed_item_ids || [];
 
         // Extract animation config from revealed_item_ids array (stored as special object)
-        let animConfig: { labelDelayMs?: number; barDelayMs?: number; sortDelayMs?: number } = {};
+        let animConfig: { labelDelayMs?: number; barDurationMs?: number; sortDelayMs?: number; sortDurationMs?: number } = {};
         const cleanRevealedIds: string[] = [];
         for (const entry of rawRevealedIds) {
             if (typeof entry === 'object' && entry !== null && (entry as any).__animConfig) {
-                animConfig = entry as any;
+                const extractedConfig = entry as any;
+                animConfig = {
+                    labelDelayMs: parseInt(extractedConfig.labelDelayMs) || 3000,
+                    barDurationMs: parseInt(extractedConfig.barDurationMs) || 3000,
+                    sortDelayMs: parseInt(extractedConfig.sortDelayMs) || 3000,
+                    sortDurationMs: parseInt(extractedConfig.sortDurationMs) || 800,
+                };
             } else if (typeof entry === 'string') {
                 cleanRevealedIds.push(entry);
             }
+        }
+
+        // Default config if missing or not fully parsed
+        if (Object.keys(animConfig).length === 0) {
+            animConfig = {
+                labelDelayMs: 3000,
+                barDurationMs: 3000,
+                sortDelayMs: 3000,
+                sortDurationMs: 800,
+            };
         }
 
         return {
@@ -427,8 +443,9 @@ export async function getSettings(): Promise<ContestSettings> {
             contestDate: data.contest_date,
             revealedItemIds: cleanRevealedIds,
             animationDelayLabelMs: animConfig.labelDelayMs ?? DEFAULT_CONTEST_SETTINGS.animationDelayLabelMs,
-            animationDelayBarMs: animConfig.barDelayMs ?? DEFAULT_CONTEST_SETTINGS.animationDelayBarMs,
-            animationDelaySortMs: animConfig.sortDelayMs ?? DEFAULT_CONTEST_SETTINGS.animationDelaySortMs,
+            animationBarDurationMs: animConfig.barDurationMs ?? DEFAULT_CONTEST_SETTINGS.animationBarDurationMs,
+            animationSortDelayMs: animConfig.sortDelayMs ?? DEFAULT_CONTEST_SETTINGS.animationSortDelayMs,
+            animationSortDurationMs: animConfig.sortDurationMs ?? DEFAULT_CONTEST_SETTINGS.animationSortDurationMs,
         };
     } catch (err) {
         console.error('Failed to fetch settings:', err);
@@ -439,21 +456,22 @@ export async function getSettings(): Promise<ContestSettings> {
 export async function updateSettings(updates: Partial<ContestSettings>): Promise<ContestSettings> {
     try {
         // 現在の設定を取得
-        const current = await getSettings();
+        const currentSettings = await getSettings();
 
         // 更新内容をマージ
-        const newSettings = { ...current, ...updates };
+        const newSettings = { ...currentSettings, ...updates };
 
-        // Embed animation config as a special object inside revealed_item_ids
-        const revealedWithConfig: unknown[] = [
-            ...newSettings.revealedItemIds,
-            {
-                __animConfig: true,
-                labelDelayMs: newSettings.animationDelayLabelMs,
-                barDelayMs: newSettings.animationDelayBarMs,
-                sortDelayMs: newSettings.animationDelaySortMs
-            }
-        ];
+        // Prepare revealed_item_ids, ensuring the animation config object is updated
+        let revealedWithConfig: unknown[] = newSettings.revealedItemIds.filter(id => id !== '__animConfig');
+
+        const newAnimConfig = {
+            __animConfig: true,
+            labelDelayMs: newSettings.animationDelayLabelMs,
+            barDurationMs: newSettings.animationBarDurationMs,
+            sortDelayMs: newSettings.animationSortDelayMs,
+            sortDurationMs: newSettings.animationSortDurationMs,
+        };
+        revealedWithConfig.push(newAnimConfig);
 
         const upsertData: Record<string, unknown> = {
             id: 'default',

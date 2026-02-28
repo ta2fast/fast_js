@@ -68,8 +68,9 @@ export interface ContestSettings {
   contestDate: string;
   revealedItemIds: string[];      // 公開済みの評価項目ID
   animationDelayLabelMs: number;  // 項目名の表示時間 (ms)
-  animationDelayBarMs: number;    // バーの伸長にかかる時間 (ms)
-  animationDelaySortMs: number;   // 並べ替えが始まるまでの待ち時間 (ms)
+  animationBarDurationMs: number; // バーの伸長にかかる時間 (ms)
+  animationSortDelayMs: number;   // 並べ替えが始まるまでの待ち時間 (ms)
+  animationSortDurationMs: number; // 並べ替えのアニメーション速度 (ms)
 }
 
 // 評価項目のカラーパレット
@@ -158,6 +159,7 @@ export const DEFAULT_CONTEST_SETTINGS: ContestSettings = {
   contestDate: new Date().toISOString().split('T')[0],
   revealedItemIds: [],
   animationDelayLabelMs: 3000,
-  animationDelayBarMs: 3000,
-  animationDelaySortMs: 3000,
+  animationBarDurationMs: 3000,
+  animationSortDelayMs: 3000,
+  animationSortDurationMs: 3000,
 };

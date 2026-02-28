@@ -11,6 +11,7 @@ export default function ResultsControlPage() {
     const [labelDelaySec, setLabelDelaySec] = useState(3);
     const [barDurationSec, setBarDurationSec] = useState(3);
     const [sortDelaySec, setSortDelaySec] = useState(3);
+    const [sortDurationSec, setSortDurationSec] = useState(0.8);
 
     useEffect(() => {
         fetchSettings();
@@ -23,8 +24,9 @@ export default function ResultsControlPage() {
             if (data.success && data.data) {
                 setSettings(data.data);
                 setLabelDelaySec((data.data.animationDelayLabelMs ?? 3000) / 1000);
-                setBarDurationSec((data.data.animationDelayBarMs ?? 3000) / 1000);
-                setSortDelaySec((data.data.animationDelaySortMs ?? 3000) / 1000);
+                setBarDurationSec((data.data.animationBarDurationMs ?? 3000) / 1000);
+                setSortDelaySec((data.data.animationSortDelayMs ?? 3000) / 1000);
+                setSortDurationSec((data.data.animationSortDurationMs ?? 800) / 1000);
             } else {
                 alert(`設定の読み込みに失敗しました: ${data.error || '不明なエラー'}`);
             }
@@ -59,7 +61,7 @@ export default function ResultsControlPage() {
         }
     };
 
-    const updateAnimationDelays = async (label: number, bar: number, sort: number) => {
+    const updateAnimationDelays = async (label: number, bar: number, sortDelay: number, sortDuration: number) => {
         if (!settings) return;
         setUpdating(true);
         try {
@@ -68,8 +70,9 @@ export default function ResultsControlPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     animationDelayLabelMs: Math.round(label * 1000),
-                    animationDelayBarMs: Math.round(bar * 1000),
-                    animationDelaySortMs: Math.round(sort * 1000),
+                    animationBarDurationMs: Math.round(bar * 1000),
+                    animationSortDelayMs: Math.round(sortDelay * 1000),
+                    animationSortDurationMs: Math.round(sortDuration * 1000),
                 }),
             });
             const data: ApiResponse<ContestSettings> = await res.json();
@@ -212,74 +215,89 @@ export default function ResultsControlPage() {
                             <span className="w-2 h-6 bg-amber-500 rounded-full"></span>
                             ⏱ アニメーションタイミング設定
                         </h2>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             <div>
-                                <label className="block text-sm text-[var(--text-muted)] mb-2 font-bold">
-                                    ① 項目名の表示時間
+                                <label className="block text-sm text-[var(--text-muted)] mb-1 font-bold">
+                                    Step A: 項目表示時間
                                 </label>
-                                <div className="flex items-center gap-3">
-                                    <select
-                                        value={labelDelaySec}
-                                        onChange={(e) => {
-                                            const val = parseFloat(e.target.value);
-                                            setLabelDelaySec(val);
-                                            updateAnimationDelays(val, barDurationSec, sortDelaySec);
-                                        }}
-                                        className="input flex-1 border-amber-200"
-                                    >
-                                        {[0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 6, 7, 8, 9, 10].map(v => (
-                                            <option key={v} value={v}>{v} 秒</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <p className="text-xs text-[var(--text-muted)] mt-1">
-                                    中央に項目ラベルが表示され、「タメ」を作る時間
+                                <select
+                                    value={labelDelaySec}
+                                    onChange={(e) => {
+                                        const val = parseFloat(e.target.value);
+                                        setLabelDelaySec(val);
+                                        updateAnimationDelays(val, barDurationSec, sortDelaySec, sortDurationSec);
+                                    }}
+                                    className="input w-full border-amber-200"
+                                >
+                                    {[0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 6, 7, 8, 9, 10].map(v => (
+                                        <option key={v} value={v}>{v} 秒</option>
+                                    ))}
+                                </select>
+                                <p className="text-[10px] text-[var(--text-muted)] mt-1">
+                                    項目ラベルが単独で表示される時間
                                 </p>
                             </div>
                             <div>
-                                <label className="block text-sm text-[var(--text-muted)] mb-2 font-bold">
-                                    ② バーの伸長スピード
+                                <label className="block text-sm text-[var(--text-muted)] mb-1 font-bold">
+                                    Step B: バー伸長スピード
                                 </label>
-                                <div className="flex items-center gap-3">
-                                    <select
-                                        value={barDurationSec}
-                                        onChange={(e) => {
-                                            const val = parseFloat(e.target.value);
-                                            setBarDurationSec(val);
-                                            updateAnimationDelays(labelDelaySec, val, sortDelaySec);
-                                        }}
-                                        className="input flex-1 border-amber-200"
-                                    >
-                                        {[0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map(v => (
-                                            <option key={v} value={v}>{v} 秒</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <p className="text-xs text-[var(--text-muted)] mt-1">
-                                    バーが伸び、数値がカウントアップする所要時間
+                                <select
+                                    value={barDurationSec}
+                                    onChange={(e) => {
+                                        const val = parseFloat(e.target.value);
+                                        setBarDurationSec(val);
+                                        updateAnimationDelays(labelDelaySec, val, sortDelaySec, sortDurationSec);
+                                    }}
+                                    className="input w-full border-amber-200"
+                                >
+                                    {[0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 6, 7, 8, 9, 10].map(v => (
+                                        <option key={v} value={v}>{v} 秒</option>
+                                    ))}
+                                </select>
+                                <p className="text-[10px] text-[var(--text-muted)] mt-1">
+                                    0から確定値までバーが伸びる時間
                                 </p>
                             </div>
                             <div>
-                                <label className="block text-sm text-[var(--text-muted)] mb-2 font-bold">
-                                    ③ 並べ替え待ち時間
+                                <label className="block text-sm text-[var(--text-muted)] mb-1 font-bold">
+                                    Step C: 並べ替え待ち時間
                                 </label>
-                                <div className="flex items-center gap-3">
-                                    <select
-                                        value={sortDelaySec}
-                                        onChange={(e) => {
-                                            const val = parseFloat(e.target.value);
-                                            setSortDelaySec(val);
-                                            updateAnimationDelays(labelDelaySec, barDurationSec, val);
-                                        }}
-                                        className="input flex-1 border-amber-200"
-                                    >
-                                        {[0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map(v => (
-                                            <option key={v} value={v}>{v} 秒</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <p className="text-xs text-[var(--text-muted)] mt-1">
-                                    全てが確定してから、順位が入れ替わるまでの待機時間
+                                <select
+                                    value={sortDelaySec}
+                                    onChange={(e) => {
+                                        const val = parseFloat(e.target.value);
+                                        setSortDelaySec(val);
+                                        updateAnimationDelays(labelDelaySec, barDurationSec, val, sortDurationSec);
+                                    }}
+                                    className="input w-full border-amber-200"
+                                >
+                                    {[0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map(v => (
+                                        <option key={v} value={v}>{v} 秒</option>
+                                    ))}
+                                </select>
+                                <p className="text-[10px] text-[var(--text-muted)] mt-1">
+                                    伸びきった後の静止（余韻）時間
+                                </p>
+                            </div>
+                            <div>
+                                <label className="block text-sm text-[var(--text-muted)] mb-1 font-bold">
+                                    Step D: 並べ替えスピード
+                                </label>
+                                <select
+                                    value={sortDurationSec}
+                                    onChange={(e) => {
+                                        const val = parseFloat(e.target.value);
+                                        setSortDurationSec(val);
+                                        updateAnimationDelays(labelDelaySec, barDurationSec, sortDelaySec, val);
+                                    }}
+                                    className="input w-full border-amber-200"
+                                >
+                                    {[0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map(v => (
+                                        <option key={v} value={v}>{v} 秒</option>
+                                    ))}
+                                </select>
+                                <p className="text-[10px] text-[var(--text-muted)] mt-1">
+                                    順位が入れ替わる動き自体の速さ
                                 </p>
                             </div>
                         </div>
