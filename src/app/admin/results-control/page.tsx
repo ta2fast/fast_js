@@ -12,6 +12,8 @@ export default function ResultsControlPage() {
     const [barDurationSec, setBarDurationSec] = useState(3);
     const [sortDelaySec, setSortDelaySec] = useState(3);
     const [sortDurationSec, setSortDurationSec] = useState(0.8);
+    const [animationStyle, setAnimationStyle] = useState<'Standard' | 'Pop-in' | 'Slide' | 'Flash'>('Standard');
+    const [labelFontSize, setLabelFontSize] = useState<'Small' | 'Medium' | 'Large' | 'Extra Large'>('Medium');
 
     useEffect(() => {
         fetchSettings();
@@ -22,11 +24,14 @@ export default function ResultsControlPage() {
             const res = await fetch('/api/admin/settings');
             const data: ApiResponse<ContestSettings> = await res.json();
             if (data.success && data.data) {
-                setSettings(data.data);
-                setLabelDelaySec((data.data.animationDelayLabelMs ?? 3000) / 1000);
-                setBarDurationSec((data.data.animationBarDurationMs ?? 3000) / 1000);
-                setSortDelaySec((data.data.animationSortDelayMs ?? 3000) / 1000);
-                setSortDurationSec((data.data.animationSortDurationMs ?? 800) / 1000);
+                const s = data.data;
+                setSettings(s);
+                setLabelDelaySec((s.animationDelayLabelMs ?? 3000) / 1000);
+                setBarDurationSec((s.animationBarDurationMs ?? 3000) / 1000);
+                setSortDelaySec((s.animationSortDelayMs ?? 3000) / 1000);
+                setSortDurationSec((s.animationSortDurationMs ?? 800) / 1000);
+                setAnimationStyle(s.animationStyle || 'Standard');
+                setLabelFontSize(s.labelFontSize || 'Medium');
             } else {
                 alert(`設定の読み込みに失敗しました: ${data.error || '不明なエラー'}`);
             }
@@ -61,30 +66,35 @@ export default function ResultsControlPage() {
         }
     };
 
-    const updateAnimationDelays = async (label: number, bar: number, sortDelay: number, sortDuration: number) => {
+    async function updateAnimationDelays(labelS: number, barS: number, sortDelayS: number, sortDurationS: number, style: string, size: string) {
         if (!settings) return;
         setUpdating(true);
         try {
             const res = await fetch('/api/admin/settings', {
-                method: 'PUT',
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    animationDelayLabelMs: Math.round(label * 1000),
-                    animationBarDurationMs: Math.round(bar * 1000),
-                    animationSortDelayMs: Math.round(sortDelay * 1000),
-                    animationSortDurationMs: Math.round(sortDuration * 1000),
+                    animationDelayLabelMs: Math.round(labelS * 1000),
+                    animationBarDurationMs: Math.round(barS * 1000),
+                    animationSortDelayMs: Math.round(sortDelayS * 1000),
+                    animationSortDurationMs: Math.round(sortDurationS * 1000),
+                    animationStyle: style,
+                    labelFontSize: size,
                 }),
             });
             const data: ApiResponse<ContestSettings> = await res.json();
             if (data.success && data.data) {
                 setSettings(data.data);
+            } else {
+                alert(`更新に失敗しました: ${data.error || '不明なエラー'}`);
             }
         } catch (error) {
             console.error('Failed to update animation delays:', error);
+            alert('通信エラーが発生しました。');
         } finally {
             setUpdating(false);
         }
-    };
+    }
 
     const toggleItem = (itemId: string) => {
         if (!settings) return;
@@ -215,22 +225,61 @@ export default function ResultsControlPage() {
                             <span className="w-2 h-6 bg-amber-500 rounded-full"></span>
                             ⏱ アニメーションタイミング設定
                         </h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {/* 演出設定 */}
+                        <div className="bg-black/40 p-4 rounded-xl border border-white/10 mb-6">
+                            <h3 className="text-sm font-bold text-zinc-500 mb-4 tracking-widest uppercase">演出カスタマイズ</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-zinc-400 mb-2">演出スタイル</label>
+                                    <select
+                                        value={animationStyle}
+                                        onChange={(e) => {
+                                            const val = e.target.value as any;
+                                            setAnimationStyle(val);
+                                            updateAnimationDelays(labelDelaySec, barDurationSec, sortDelaySec, sortDurationSec, val, labelFontSize);
+                                        }}
+                                        className="w-full bg-zinc-800 border-none rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#fffa00]"
+                                    >
+                                        <option value="Standard">Standard (Fade)</option>
+                                        <option value="Pop-in">Pop-in (Bounce)</option>
+                                        <option value="Slide">Slide (From Left)</option>
+                                        <option value="Flash">Flash (Impact)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-zinc-400 mb-2">文字サイズ</label>
+                                    <select
+                                        value={labelFontSize}
+                                        onChange={(e) => {
+                                            const val = e.target.value as any;
+                                            setLabelFontSize(val);
+                                            updateAnimationDelays(labelDelaySec, barDurationSec, sortDelaySec, sortDurationSec, animationStyle, val);
+                                        }}
+                                        className="w-full bg-zinc-800 border-none rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#fffa00]"
+                                    >
+                                        <option value="Small">Small</option>
+                                        <option value="Medium">Medium</option>
+                                        <option value="Large">Large</option>
+                                        <option value="Extra Large">Extra Large</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             <div>
-                                <label className="block text-sm text-[var(--text-muted)] mb-1 font-bold">
-                                    Step A: 項目表示時間
-                                </label>
+                                <label className="block text-xs font-bold text-zinc-400 mb-2">①項目表示 (秒)</label>
                                 <select
                                     value={labelDelaySec}
                                     onChange={(e) => {
                                         const val = parseFloat(e.target.value);
                                         setLabelDelaySec(val);
-                                        updateAnimationDelays(val, barDurationSec, sortDelaySec, sortDurationSec);
+                                        updateAnimationDelays(val, barDurationSec, sortDelaySec, sortDurationSec, animationStyle, labelFontSize);
                                     }}
-                                    className="input w-full border-amber-200"
+                                    className="w-full bg-zinc-800 border-none rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#fffa00]"
                                 >
-                                    {[0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 6, 7, 8, 9, 10].map(v => (
-                                        <option key={v} value={v}>{v} 秒</option>
+                                    {[0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map(v => (
+                                        <option key={v} value={v}>{v}s</option>
                                     ))}
                                 </select>
                                 <p className="text-[10px] text-[var(--text-muted)] mt-1">
@@ -238,20 +287,18 @@ export default function ResultsControlPage() {
                                 </p>
                             </div>
                             <div>
-                                <label className="block text-sm text-[var(--text-muted)] mb-1 font-bold">
-                                    Step B: バー伸長スピード
-                                </label>
+                                <label className="block text-xs font-bold text-zinc-400 mb-2">②バー伸長 (秒)</label>
                                 <select
                                     value={barDurationSec}
                                     onChange={(e) => {
                                         const val = parseFloat(e.target.value);
                                         setBarDurationSec(val);
-                                        updateAnimationDelays(labelDelaySec, val, sortDelaySec, sortDurationSec);
+                                        updateAnimationDelays(labelDelaySec, val, sortDelaySec, sortDurationSec, animationStyle, labelFontSize);
                                     }}
-                                    className="input w-full border-amber-200"
+                                    className="w-full bg-zinc-800 border-none rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#fffa00]"
                                 >
                                     {[0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 6, 7, 8, 9, 10].map(v => (
-                                        <option key={v} value={v}>{v} 秒</option>
+                                        <option key={v} value={v}>{v}s</option>
                                     ))}
                                 </select>
                                 <p className="text-[10px] text-[var(--text-muted)] mt-1">
@@ -259,20 +306,18 @@ export default function ResultsControlPage() {
                                 </p>
                             </div>
                             <div>
-                                <label className="block text-sm text-[var(--text-muted)] mb-1 font-bold">
-                                    Step C: 並べ替え待ち時間
-                                </label>
+                                <label className="block text-xs font-bold text-zinc-400 mb-2">③整理待ち (秒)</label>
                                 <select
                                     value={sortDelaySec}
                                     onChange={(e) => {
                                         const val = parseFloat(e.target.value);
                                         setSortDelaySec(val);
-                                        updateAnimationDelays(labelDelaySec, barDurationSec, val, sortDurationSec);
+                                        updateAnimationDelays(labelDelaySec, barDurationSec, val, sortDurationSec, animationStyle, labelFontSize);
                                     }}
-                                    className="input w-full border-amber-200"
+                                    className="w-full bg-zinc-800 border-none rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#fffa00]"
                                 >
                                     {[0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map(v => (
-                                        <option key={v} value={v}>{v} 秒</option>
+                                        <option key={v} value={v}>{v}s</option>
                                     ))}
                                 </select>
                                 <p className="text-[10px] text-[var(--text-muted)] mt-1">
@@ -280,20 +325,18 @@ export default function ResultsControlPage() {
                                 </p>
                             </div>
                             <div>
-                                <label className="block text-sm text-[var(--text-muted)] mb-1 font-bold">
-                                    Step D: 並べ替えスピード
-                                </label>
+                                <label className="block text-xs font-bold text-zinc-400 mb-2">④並替速さ (秒)</label>
                                 <select
                                     value={sortDurationSec}
                                     onChange={(e) => {
                                         const val = parseFloat(e.target.value);
                                         setSortDurationSec(val);
-                                        updateAnimationDelays(labelDelaySec, barDurationSec, sortDelaySec, val);
+                                        updateAnimationDelays(labelDelaySec, barDurationSec, sortDelaySec, val, animationStyle, labelFontSize);
                                     }}
-                                    className="input w-full border-amber-200"
+                                    className="w-full bg-zinc-800 border-none rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#fffa00]"
                                 >
-                                    {[0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map(v => (
-                                        <option key={v} value={v}>{v} 秒</option>
+                                    {[0, 0.5, 0.8, 1, 1.5, 2, 2.5, 3].map(v => (
+                                        <option key={v} value={v}>{v}s</option>
                                     ))}
                                 </select>
                                 <p className="text-[10px] text-[var(--text-muted)] mt-1">

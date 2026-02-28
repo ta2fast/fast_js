@@ -402,16 +402,25 @@ export async function getSettings(): Promise<ContestSettings> {
         const rawRevealedIds = data.revealed_item_ids || [];
 
         // Extract animation config from revealed_item_ids array (stored as special object)
-        let animConfig: { labelDelayMs?: number; barDurationMs?: number; sortDelayMs?: number; sortDurationMs?: number } = {};
+        let animConfig: {
+            labelDelay?: number;
+            barDuration?: number;
+            sortDelay?: number;
+            sortDuration?: number;
+            style?: 'Standard' | 'Pop-in' | 'Slide' | 'Flash';
+            fontSize?: 'Small' | 'Medium' | 'Large' | 'Extra Large';
+        } = {};
         const cleanRevealedIds: string[] = [];
         for (const entry of rawRevealedIds) {
             if (typeof entry === 'object' && entry !== null && (entry as any).__animConfig) {
-                const extractedConfig = entry as any;
+                const extracted = (entry as any).__animConfig;
                 animConfig = {
-                    labelDelayMs: parseInt(extractedConfig.labelDelayMs) || 3000,
-                    barDurationMs: parseInt(extractedConfig.barDurationMs) || 3000,
-                    sortDelayMs: parseInt(extractedConfig.sortDelayMs) || 3000,
-                    sortDurationMs: parseInt(extractedConfig.sortDurationMs) || 800,
+                    labelDelay: parseInt(extracted.labelDelay) || 3000,
+                    barDuration: parseInt(extracted.barDuration) || 3000,
+                    sortDelay: parseInt(extracted.sortDelay) || 3000,
+                    sortDuration: parseInt(extracted.sortDuration) || 800,
+                    style: extracted.style || 'Standard',
+                    fontSize: extracted.fontSize || 'Medium',
                 };
             } else if (typeof entry === 'string') {
                 cleanRevealedIds.push(entry);
@@ -421,10 +430,12 @@ export async function getSettings(): Promise<ContestSettings> {
         // Default config if missing or not fully parsed
         if (Object.keys(animConfig).length === 0) {
             animConfig = {
-                labelDelayMs: 3000,
-                barDurationMs: 3000,
-                sortDelayMs: 3000,
-                sortDurationMs: 800,
+                labelDelay: 3000,
+                barDuration: 3000,
+                sortDelay: 3000,
+                sortDuration: 800,
+                style: 'Standard',
+                fontSize: 'Medium',
             };
         }
 
@@ -442,10 +453,12 @@ export async function getSettings(): Promise<ContestSettings> {
             contestName: data.contest_name,
             contestDate: data.contest_date,
             revealedItemIds: cleanRevealedIds,
-            animationDelayLabelMs: animConfig.labelDelayMs ?? DEFAULT_CONTEST_SETTINGS.animationDelayLabelMs,
-            animationBarDurationMs: animConfig.barDurationMs ?? DEFAULT_CONTEST_SETTINGS.animationBarDurationMs,
-            animationSortDelayMs: animConfig.sortDelayMs ?? DEFAULT_CONTEST_SETTINGS.animationSortDelayMs,
-            animationSortDurationMs: animConfig.sortDurationMs ?? DEFAULT_CONTEST_SETTINGS.animationSortDurationMs,
+            animationDelayLabelMs: animConfig.labelDelay ?? DEFAULT_CONTEST_SETTINGS.animationDelayLabelMs,
+            animationBarDurationMs: animConfig.barDuration ?? DEFAULT_CONTEST_SETTINGS.animationBarDurationMs,
+            animationSortDelayMs: animConfig.sortDelay ?? DEFAULT_CONTEST_SETTINGS.animationSortDelayMs,
+            animationSortDurationMs: animConfig.sortDuration ?? DEFAULT_CONTEST_SETTINGS.animationSortDurationMs,
+            animationStyle: animConfig.style ?? DEFAULT_CONTEST_SETTINGS.animationStyle,
+            labelFontSize: animConfig.fontSize ?? DEFAULT_CONTEST_SETTINGS.labelFontSize,
         };
     } catch (err) {
         console.error('Failed to fetch settings:', err);
@@ -462,16 +475,25 @@ export async function updateSettings(updates: Partial<ContestSettings>): Promise
         const newSettings = { ...currentSettings, ...updates };
 
         // Prepare revealed_item_ids, ensuring the animation config object is updated
-        let revealedWithConfig: unknown[] = newSettings.revealedItemIds.filter(id => id !== '__animConfig');
+        let revealedWithConfig = newSettings.revealedItemIds.filter(id => {
+            try {
+                if (typeof id === 'object' && id !== null && (id as any).__animConfig) return false;
+                if (typeof id === 'string' && id.startsWith('{"__animConfig"')) return false;
+                return true;
+            } catch { return true; }
+        });
 
         const newAnimConfig = {
-            __animConfig: true,
-            labelDelayMs: newSettings.animationDelayLabelMs,
-            barDurationMs: newSettings.animationBarDurationMs,
-            sortDelayMs: newSettings.animationSortDelayMs,
-            sortDurationMs: newSettings.animationSortDurationMs,
+            __animConfig: {
+                labelDelay: newSettings.animationDelayLabelMs,
+                barDuration: newSettings.animationBarDurationMs,
+                sortDelay: newSettings.animationSortDelayMs,
+                sortDuration: newSettings.animationSortDurationMs,
+                style: newSettings.animationStyle,
+                fontSize: newSettings.labelFontSize,
+            }
         };
-        revealedWithConfig.push(newAnimConfig);
+        revealedWithConfig.push(JSON.stringify(newAnimConfig));
 
         const upsertData: Record<string, unknown> = {
             id: 'default',

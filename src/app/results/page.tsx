@@ -356,15 +356,62 @@ export default function ResultsPage() {
             <AnimatePresence>
                 {revealingItem && (
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 1.2, filter: 'blur(10px)' }}
                         className="fixed inset-0 z-[60] flex flex-col items-center justify-center pointer-events-none"
                     >
+                        {/* Flash Effect Helper */}
+                        {settings.animationStyle === 'Flash' && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: [0, 1, 0] }}
+                                transition={{ duration: 0.4, times: [0, 0.2, 1] }}
+                                className="fixed inset-0 bg-white z-[61]"
+                            />
+                        )}
+
                         <motion.div
-                            initial={{ y: 20, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            className="text-[10vw] md:text-[8vw] font-bold tracking-tight leading-none text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.6)]"
+                            variants={{
+                                Standard: {
+                                    initial: { opacity: 0, scale: 0.9 },
+                                    animate: { opacity: 1, scale: 1 },
+                                    exit: { opacity: 0, scale: 1.1, filter: 'blur(10px)' }
+                                },
+                                'Pop-in': {
+                                    initial: { opacity: 0, scale: 0 },
+                                    animate: { opacity: 1, scale: [0, 1.25, 1], rotate: [0, -5, 0] },
+                                    exit: { opacity: 0, scale: 2, filter: 'blur(20px)' }
+                                },
+                                Slide: {
+                                    initial: { x: '-100vw', opacity: 0, rotate: -10 },
+                                    animate: { x: 0, opacity: 1, rotate: 0 },
+                                    exit: { x: '100vw', opacity: 0, rotate: 10 }
+                                },
+                                Flash: {
+                                    initial: { opacity: 0, scale: 1.5 },
+                                    animate: {
+                                        opacity: 1,
+                                        scale: 1,
+                                        filter: ['brightness(1)', 'brightness(10)', 'brightness(1)'],
+                                        textShadow: ['0 0 0px #fff', '0 0 50px #fff', '0 0 10px #fff']
+                                    },
+                                    exit: { opacity: 0, scale: 0.8, filter: 'blur(10px)' }
+                                }
+                            }[settings.animationStyle || 'Standard']}
+                            initial="initial"
+                            animate="animate"
+                            exit="exit"
+                            transition={
+                                settings.animationStyle === 'Slide'
+                                    ? { type: 'spring', damping: 12, stiffness: 90 }
+                                    : { duration: 0.5 }
+                            }
+                            className={`
+                                font-black tracking-tighter leading-none text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.8)] text-center px-4
+                                ${settings.labelFontSize === 'Small' ? 'text-4xl md:text-6xl' :
+                                    settings.labelFontSize === 'Large' ? 'text-8xl md:text-[12vw]' :
+                                        settings.labelFontSize === 'Extra Large' ? 'text-[12vw] md:text-[18vw]' :
+                                            'text-6xl md:text-[8vw]' // Medium default
+                                }
+                            `}
                         >
                             {revealingItem}
                         </motion.div>

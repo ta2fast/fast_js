@@ -71,6 +71,8 @@ export interface ContestSettings {
   animationBarDurationMs: number; // バーの伸長にかかる時間 (ms)
   animationSortDelayMs: number;   // 並べ替えが始まるまでの待ち時間 (ms)
   animationSortDurationMs: number; // 並べ替えのアニメーション速度 (ms)
+  animationStyle: 'Standard' | 'Pop-in' | 'Slide' | 'Flash';
+  labelFontSize: 'Small' | 'Medium' | 'Large' | 'Extra Large';
 }
 
 // 評価項目のカラーパレット
@@ -162,4 +164,6 @@ export const DEFAULT_CONTEST_SETTINGS: ContestSettings = {
   animationBarDurationMs: 3000,
   animationSortDelayMs: 3000,
   animationSortDurationMs: 3000,
+  animationStyle: 'Standard',
+  labelFontSize: 'Medium',
 };
