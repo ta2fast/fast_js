@@ -183,20 +183,24 @@ export default function ResultsPage() {
                             // Sequence execution loop
                             const runSequence = async () => {
                                 try {
-                                    // Step A: Label Display
+                                    // === Step A: Label Display ===
                                     setRevealingItem(itemName);
                                     await wait(labelMs);
-                                    setRevealingItem(null);
 
-                                    // Step B: Bar Extension & Counter
+                                    // Exit Step A and WAIT for the exit transition (opacity/scale) to complete
+                                    setRevealingItem(null);
+                                    await wait(500); // Wait 500ms for framer-motion exit animation
+
+                                    // === Step B: Bar Extension & Counter ===
+                                    // Start both simultaneously after Label is GONE
                                     setBarRevealedIds(newIds);
                                     setDisplayedIds(newIds);
                                     await wait(barMs);
 
-                                    // Step C: Sort Delay (Confirmation Pause)
+                                    // === Step C: Sort Delay (Confirmation Pause) ===
                                     await wait(sortDelayMs);
 
-                                    // Step D: Sorting (Layout Transition)
+                                    // === Step D: Sorting (Layout Transition) ===
                                     setSortingIds(newIds);
                                     await wait(sortDurationMs);
                                 } finally {
