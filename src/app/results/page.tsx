@@ -28,7 +28,7 @@ function AnimatedCounter({ value }: { value: number }) {
         const end = value;
         if (start === end) return;
 
-        const duration = 1500; // 1.5s for a smoother feel
+        const duration = 3000; // 3s sync with bar extension
         const startTime = performance.now();
 
         const update = (now: number) => {
@@ -153,7 +153,7 @@ export default function ResultsPage() {
                 const newCount = newIds.length;
 
                 // Play sound and flash overlay if items were revealed
-                if (settings && newCount > prevRevealedCount.current) {
+                if (settings && newCount > prevRevealedCount.current && !animatingRef.current) {
                     playRevealSound();
 
                     // Find which ID was just added
@@ -182,16 +182,18 @@ export default function ResultsPage() {
                             // Mark animation as in progress
                             animatingRef.current = true;
 
-                            // === 3-Stage Animation Sequence ===
-                            // Stage 1 (0s): Bars start extending immediately
-                            setBarRevealedIds(newIds);
+                            // === 3-Stage Animation Sequence (Strict Timing) ===
 
-                            // Stage 2 (scoreDelay): Score number confirmed
+                            // Stage 1 (0s): Label only — handled by revealingItem state above.
+                            // We do NOT update barRevealedIds or displayedIds yet.
+
+                            // Stage 2 (3s): Bar start extension AND Score start counting simultaneously
                             displayTimeoutRef.current = setTimeout(() => {
+                                setBarRevealedIds(newIds);
                                 setDisplayedIds(newIds);
                             }, scoreDelay);
 
-                            // Stage 3 (scoreDelay + rankDelay): Rank reorder
+                            // Stage 3 (6s): All items finished — Perform sorting
                             sortTimeoutRef.current = setTimeout(() => {
                                 setSortingIds(newIds);
                                 animatingRef.current = false;
@@ -356,20 +358,34 @@ export default function ResultsPage() {
 
 
             {/* High-visibility Legend */}
-            <div className="flex justify-end gap-x-6 mb-4 opacity-90 border-b border-white/20 pb-2">
-                {enabledItems.map((item, i) => (
-                    <div key={item.id} className="flex items-center gap-2">
-                        <div
-                            className="w-4 h-4 border-2 border-white"
-                            style={{ backgroundColor: OUTDOOR_COLORS[i % OUTDOOR_COLORS.length] }}
-                        />
-                        <span className="text-xs md:text-sm text-white font-bold">{item.name}</span>
-                    </div>
-                ))}
-                <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white bg-[#f87171]" />
-                    <span className="text-xs md:text-sm text-white font-bold">Audience</span>
-                </div>
+            <div className="flex justify-end gap-x-8 mb-6 opacity-90 border-b border-white/20 pb-4 h-12 items-end">
+                {enabledItems.map((item, i) => {
+                    const isActive = item.name === revealingItem;
+                    return (
+                        <motion.div
+                            key={item.id}
+                            animate={isActive ? { scale: 1.3, y: -5 } : { scale: 1, y: 0 }}
+                            className={`flex items-center gap-2 transition-colors ${isActive ? 'text-[#fffa00]' : 'text-white'}`}
+                        >
+                            <div
+                                className={`w-4 h-4 border-2 ${isActive ? 'border-[#fffa00] shadow-[0_0_10px_rgba(255,250,0,0.8)]' : 'border-white'}`}
+                                style={{ backgroundColor: OUTDOOR_COLORS[i % OUTDOOR_COLORS.length] }}
+                            />
+                            <span className={`text-sm md:text-base font-black tracking-tight ${isActive ? 'drop-shadow-[0_0_8px_rgba(255,250,0,0.6)]' : ''}`}>
+                                {item.name}
+                            </span>
+                        </motion.div>
+                    );
+                })}
+                <motion.div
+                    animate={revealingItem === 'AUDIENCE SCORE' ? { scale: 1.3, y: -5 } : { scale: 1, y: 0 }}
+                    className={`flex items-center gap-2 transition-colors ${revealingItem === 'AUDIENCE SCORE' ? 'text-[#fffa00]' : 'text-white'}`}
+                >
+                    <div className={`w-4 h-4 border-2 ${revealingItem === 'AUDIENCE SCORE' ? 'border-[#fffa00] shadow-[0_0_10px_rgba(255,250,0,0.8)]' : 'border-white'} bg-[#f87171]`} />
+                    <span className={`text-sm md:text-base font-black tracking-tight ${revealingItem === 'AUDIENCE SCORE' ? 'drop-shadow-[0_0_8px_rgba(255,250,0,0.6)]' : ''}`}>
+                        Audience
+                    </span>
+                </motion.div>
             </div>
 
             <div className="flex-1 flex flex-col gap-3 min-h-0">
@@ -417,19 +433,19 @@ export default function ResultsPage() {
                                         animate={{
                                             width: item.revealed ? `${(item.score / 125) * 100}%` : '0%'
                                         }}
-                                        transition={{ type: 'spring', stiffness: 60, damping: 15, mass: 0.5 }}
+                                        transition={{ type: 'tween', duration: 3, ease: 'easeOut' }}
                                         style={{
                                             backgroundColor: item.color,
                                             boxShadow: item.revealed ? `inset 0 0 20px rgba(255,255,255,0.4), 0 0 15px ${item.color}66` : 'none'
                                         }}
                                         className="h-full relative flex items-center justify-center overflow-hidden"
                                     >
-                                        {item.revealed && item.score > 5 && (
+                                        {item.revealed && item.score > 2 && (
                                             <motion.span
                                                 initial={{ opacity: 0, scale: 0.5 }}
                                                 animate={{ opacity: 1, scale: 1 }}
-                                                transition={{ delay: 0.4 }}
-                                                className="text-black font-bold text-sm md:text-lg tracking-tight"
+                                                transition={{ delay: 1 }}
+                                                className="text-black font-bold text-sm md:text-lg tracking-tight whitespace-nowrap"
                                             >
                                                 {item.score.toFixed(1)}
                                             </motion.span>
