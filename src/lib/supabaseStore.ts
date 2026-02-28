@@ -556,7 +556,28 @@ export async function updateAnimationSettings(updates: Partial<AnimationSettings
             .select()
             .single();
 
-        if (error) throw error;
+        if (error) {
+            // Fallback: If error is due to missing target_item_id column
+            if (error.message.includes('target_item_id') || error.code === 'PGRST204' || error.message.includes('column')) {
+                console.warn('target_item_id column might be missing in DB, falling back...', error);
+                const safeUpdates = { ...updates } as Partial<Record<string, unknown>>;
+                delete safeUpdates.target_item_id;
+
+                const { data: safeData, error: safeError } = await supabase
+                    .from('animation_settings')
+                    .upsert({
+                        id: 1,
+                        ...safeUpdates,
+                        updated_at: new Date().toISOString()
+                    }, { onConflict: 'id' })
+                    .select()
+                    .single();
+
+                if (safeError) throw safeError;
+                return safeData as AnimationSettings;
+            }
+            throw error;
+        }
         return data as AnimationSettings;
     } catch (err) {
         console.error('updateAnimationSettings error:', err);

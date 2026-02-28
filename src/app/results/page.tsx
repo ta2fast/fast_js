@@ -203,8 +203,14 @@ export default function ResultsPage() {
                 const currentRevealed = mergedSettings.revealedItemIds || [];
                 const displayRevealed = barRevealedIds;
                 const wasReset = currentRevealed.length < displayRevealed.length;
-                if (wasReset) {
-                    console.log('[Results] Items reset detected');
+
+                // If there are newly revealed items, and we are NOT animating, and is_running is FALSE on the server,
+                // it means the animation trigger was missed or failed. We should just sync them to prevent being stuck.
+                const hasMissedNewItems = currentRevealed.length > displayRevealed.length && (!animData.success || !animData.data.is_running);
+
+                if (wasReset || hasMissedNewItems) {
+                    if (wasReset) console.log('[Results] Items reset detected');
+                    if (hasMissedNewItems) console.log('[Results] Missed animation trigger detected, auto-syncing');
                     setBarRevealedIds(currentRevealed);
                     setDisplayedIds(currentRevealed);
                     setSortingIds(currentRevealed);
