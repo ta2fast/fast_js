@@ -74,6 +74,9 @@ export default function ResultsPage() {
     // === Animation lock ===
     const isAnimatingRef = useRef(false);
 
+    // Ref to track how long we've been missing an expected animation trigger
+    const missedSyncCounterRef = useRef(0);
+
     // Ref to hold runAnimationSequence for polling fallback
     const runAnimationRef = useRef<((targetItemId: string) => Promise<void>) | null>(null);
 
@@ -205,15 +208,30 @@ export default function ResultsPage() {
                 const wasReset = currentRevealed.length < displayRevealed.length;
 
                 // If there are newly revealed items, and we are NOT animating, and is_running is FALSE on the server,
-                // it means the animation trigger was missed or failed. We should just sync them to prevent being stuck.
+                // it might mean the animation trigger was missed or failed. 
+                // However, we need to be careful not to trigger this *right* as an animation is starting.
+                // We'll only auto-sync if we see this state persistently (using a ref in a real app, but here we just check if it's been a while since the last update)
+                // Actually, let's just make it simpler: if we see new items and is_running is false, we wait 1 cycle (3s)
+                // by tracking it in a ref.
                 const hasMissedNewItems = currentRevealed.length > displayRevealed.length && (!animData.success || !animData.data.is_running);
 
-                if (wasReset || hasMissedNewItems) {
-                    if (wasReset) console.log('[Results] Items reset detected');
-                    if (hasMissedNewItems) console.log('[Results] Missed animation trigger detected, auto-syncing');
+                if (wasReset) {
+                    console.log('[Results] Items reset detected');
                     setBarRevealedIds(currentRevealed);
                     setDisplayedIds(currentRevealed);
                     setSortingIds(currentRevealed);
+                    missedSyncCounterRef.current = 0;
+                } else if (hasMissedNewItems) {
+                    missedSyncCounterRef.current += 1;
+                    if (missedSyncCounterRef.current >= 2) { // Wait 2 polling cycles (~6 seconds) before forcing sync
+                        console.log('[Results] Missed animation trigger detected for 6+ seconds, auto-syncing');
+                        setBarRevealedIds(currentRevealed);
+                        setDisplayedIds(currentRevealed);
+                        setSortingIds(currentRevealed);
+                        missedSyncCounterRef.current = 0;
+                    }
+                } else {
+                    missedSyncCounterRef.current = 0;
                 }
             }
 
