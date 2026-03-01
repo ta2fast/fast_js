@@ -136,7 +136,9 @@ export async function updateRider(id: string, updates: Partial<Rider>): Promise<
         if (error.code === 'PGRST116') return null;
         throw error;
     }
-    await addLog('setting_change', 'Rider updated', { rider: data });
+    if (Object.keys(updateData).length > 0) {
+        await addLog('setting_change', 'Rider updated', { rider: data });
+    }
     return {
         id: data.id,
         name: data.name,
@@ -164,7 +166,7 @@ export async function reorderRiders(riderId: string, newPosition: number): Promi
     // 1. 全ライダーを取得して現在の順序を確認
     const { data: riders, error: fetchError } = await supabase
         .from('riders')
-        .select('id, display_order')
+        .select('*')
         .order('display_order', { ascending: true });
 
     if (fetchError) throw fetchError;
@@ -181,10 +183,13 @@ export async function reorderRiders(riderId: string, newPosition: number): Promi
     const insertIndex = Math.max(0, Math.min(newPosition - 1, sortedRiders.length));
     sortedRiders.splice(insertIndex, 0, targetRider);
 
-    // 3. 全ライダーのdisplay_orderを再割り当て
+    // 3. 全ライダーのデータを再構成（全カラムを含める）
     const updates = sortedRiders.map((rider, index) => ({
         id: rider.id,
-        display_order: index + 1
+        name: rider.name,
+        rider_name: rider.rider_name,
+        display_order: index + 1,
+        created_at: rider.created_at
     }));
 
     // 4. バッチ更新（upsertを使用）
