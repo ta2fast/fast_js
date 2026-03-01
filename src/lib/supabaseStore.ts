@@ -588,6 +588,7 @@ export async function getSettings(): Promise<ContestSettings> {
             animationStyle: animConfig.style ?? DEFAULT_CONTEST_SETTINGS.animationStyle,
             labelFontSize: animConfig.fontSize ?? DEFAULT_CONTEST_SETTINGS.labelFontSize,
             judgeCount: data.judge_count ?? 3,
+            judgePassword: data.judge_password ?? '',
         };
 
         return baseSettings;
@@ -641,6 +642,7 @@ export async function updateSettings(updates: Partial<ContestSettings>): Promise
             contest_date: newSettings.contestDate,
             revealed_item_ids: revealedWithConfig,
             judge_count: newSettings.judgeCount,
+            judge_password: newSettings.judgePassword,
             updated_at: new Date().toISOString(),
         };
 

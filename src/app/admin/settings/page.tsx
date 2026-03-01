@@ -185,6 +185,19 @@ export default function SettingsPage() {
                             </select>
                             <p className="text-[10px] text-[var(--text-muted)] mt-1">※ジャッジログイン画面のボタン数に反映されます</p>
                         </div>
+                        <div>
+                            <label className="block text-sm text-[var(--text-muted)] mb-2">
+                                審査員用パスワード
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="未設定（パスワードなし）"
+                                value={settings.judgePassword || ''}
+                                onChange={e => saveSettings({ judgePassword: e.target.value })}
+                                className="input"
+                            />
+                            <p className="text-[10px] text-[var(--text-muted)] mt-1">※ジャッジログイン時に要求されるパスワードです</p>
+                        </div>
                     </div>
                 </div>
 

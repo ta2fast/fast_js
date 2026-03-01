@@ -9,9 +9,14 @@ import { getJudgeSessions, occupyJudgeSeat, getSettings } from '@/lib/store';
 export default function JudgeLoginPage() {
     const router = useRouter();
     const [judgeCount, setJudgeCount] = useState(3);
+    const [correctPassword, setCorrectPassword] = useState('');
     const [sessions, setSessions] = useState<JudgeSession[]>([]);
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
+
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [pendingJudgeId, setPendingJudgeId] = useState<string | null>(null);
+    const [inputPassword, setInputPassword] = useState('');
 
     useEffect(() => {
         // Initial fetch
@@ -19,6 +24,7 @@ export default function JudgeLoginPage() {
             try {
                 const settings = await getSettings();
                 setJudgeCount(settings.judgeCount || 3);
+                setCorrectPassword(settings.judgePassword || '');
 
                 const sess = await getJudgeSessions();
                 setSessions(sess);
@@ -66,6 +72,18 @@ export default function JudgeLoginPage() {
             return;
         }
 
+        // パスワード設定がある場合、モーダルを表示（再入室時はスキップ）
+        if (correctPassword && !isSelf) {
+            setPendingJudgeId(judgeId);
+            setShowPasswordModal(true);
+            setInputPassword('');
+            return;
+        }
+
+        await proceedToLogin(judgeId);
+    };
+
+    const proceedToLogin = async (judgeId: string) => {
         setProcessing(true);
         try {
             const success = await occupyJudgeSeat(judgeId);
@@ -80,6 +98,18 @@ export default function JudgeLoginPage() {
             alert('選択に失敗しました。');
         } finally {
             setProcessing(false);
+            setShowPasswordModal(false);
+        }
+    };
+
+    const handlePasswordSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (inputPassword === correctPassword) {
+            if (pendingJudgeId) {
+                proceedToLogin(pendingJudgeId);
+            }
+        } else {
+            alert('パスワードが正しくありません。');
         }
     };
 
@@ -130,6 +160,44 @@ export default function JudgeLoginPage() {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                     {judgeButtons}
                 </div>
+
+                {/* Password Modal */}
+                {showPasswordModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                        <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl scale-in-center">
+                            <h3 className="text-2xl font-bold mb-2 text-center">パスワード入力</h3>
+                            <p className="text-zinc-500 text-sm mb-6 text-center">
+                                運営が設定したジャッジ用パスワードを入力してください
+                            </p>
+                            <form onSubmit={handlePasswordSubmit}>
+                                <input
+                                    type="password"
+                                    autoFocus
+                                    value={inputPassword}
+                                    onChange={(e) => setInputPassword(e.target.value)}
+                                    className="w-full p-4 text-center text-2xl tracking-widest border-2 border-zinc-200 rounded-2xl mb-6 focus:border-[var(--primary)] focus:outline-none transition-colors bg-zinc-50 shadow-inner"
+                                    placeholder="****"
+                                />
+                                <div className="flex gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPasswordModal(false)}
+                                        className="flex-1 p-4 rounded-xl font-bold text-zinc-400 hover:bg-zinc-100 transition-colors"
+                                    >
+                                        戻る
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={!inputPassword}
+                                        className="flex-1 bg-[var(--primary)] text-white p-4 rounded-xl font-bold shadow-lg shadow-[var(--primary)]/30 hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"
+                                    >
+                                        認証
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
 
                 <div className="mt-12 text-center text-sm text-[var(--text-muted)]">
                     <p>※ 一度選択すると、その端末は特定のジャッジとして固定されます</p>

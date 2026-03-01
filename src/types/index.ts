@@ -74,6 +74,7 @@ export interface ContestSettings {
   animationStyle: 'Standard' | 'Pop-in' | 'Slide' | 'Flash';
   labelFontSize: 'Small' | 'Medium' | 'Large' | 'Extra Large';
   judgeCount: number;             // 審査員数 (1-10)
+  judgePassword?: string;         // ジャッジログイン用パスワード
 }
 
 // 評価項目のカラーパレット
@@ -175,5 +176,6 @@ export const DEFAULT_CONTEST_SETTINGS: ContestSettings = {
   animationStyle: 'Standard',
   labelFontSize: 'Medium',
   judgeCount: 3,
+  judgePassword: '',
 };
 
