@@ -45,6 +45,11 @@ export {
     // Initialize
     initializeStore,
 
+    // Judge Sessions
+    getJudgeSessions,
+    occupyJudgeSeat,
+    releaseJudgeSeat,
+
     // Reset
     resetContestData,
 } from './supabaseStore';

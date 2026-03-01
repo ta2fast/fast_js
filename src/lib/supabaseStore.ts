@@ -11,7 +11,8 @@ import {
     Judge,
     LogEntry,
     DEFAULT_CONTEST_SETTINGS,
-    EvaluationItem
+    EvaluationItem,
+    JudgeSession
 } from '@/types';
 
 // ==============================
@@ -478,6 +479,7 @@ export async function getSettings(): Promise<ContestSettings> {
             animationSortDurationMs: animConfig.sortDuration ?? DEFAULT_CONTEST_SETTINGS.animationSortDurationMs,
             animationStyle: animConfig.style ?? DEFAULT_CONTEST_SETTINGS.animationStyle,
             labelFontSize: animConfig.fontSize ?? DEFAULT_CONTEST_SETTINGS.labelFontSize,
+            judgeCount: data.judge_count ?? 3,
         };
 
         return baseSettings;
@@ -530,6 +532,7 @@ export async function updateSettings(updates: Partial<ContestSettings>): Promise
             contest_name: newSettings.contestName,
             contest_date: newSettings.contestDate,
             revealed_item_ids: revealedWithConfig,
+            judge_count: newSettings.judgeCount,
             updated_at: new Date().toISOString(),
         };
 
@@ -642,6 +645,49 @@ export async function deleteJudge(id: string): Promise<boolean> {
 
     if (error) throw error;
     await addLog('setting_change', 'Judge deleted', { judge });
+    return true;
+}
+
+// ==============================
+// Judge Sessions
+// ==============================
+
+export async function getJudgeSessions(): Promise<JudgeSession[]> {
+    const { data, error } = await supabase
+        .from('judge_sessions')
+        .select('*');
+
+    if (error) throw error;
+    return (data || []).map(row => ({
+        judgeId: row.judge_id,
+        isOccupied: row.is_occupied,
+        updatedAt: row.updated_at,
+    }));
+}
+
+export async function occupyJudgeSeat(judgeId: string): Promise<boolean> {
+    const { error } = await supabase
+        .from('judge_sessions')
+        .update({ is_occupied: true, updated_at: new Date().toISOString() })
+        .eq('judge_id', judgeId);
+
+    if (error) {
+        console.error('Failed to occupy seat:', error);
+        return false;
+    }
+    return true;
+}
+
+export async function releaseJudgeSeat(judgeId: string): Promise<boolean> {
+    const { error } = await supabase
+        .from('judge_sessions')
+        .update({ is_occupied: false, updated_at: new Date().toISOString() })
+        .eq('judge_id', judgeId);
+
+    if (error) {
+        console.error('Failed to release seat:', error);
+        return false;
+    }
     return true;
 }
 

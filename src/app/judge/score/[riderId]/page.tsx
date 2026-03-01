@@ -24,19 +24,22 @@ export default function JudgeScorePage() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (!judgeId) {
-            router.push('/judge');
+        const storedJudgeId = localStorage.getItem('fast_judge_id');
+        const finalJudgeId = judgeId || storedJudgeId;
+
+        if (!finalJudgeId) {
+            router.push('/judge/login');
             return;
         }
-        fetchData();
+        fetchData(finalJudgeId);
     }, [riderId, judgeId]);
 
-    async function fetchData() {
+    async function fetchData(fJudgeId: string) {
         try {
             const [ridersRes, settingsRes, statusRes] = await Promise.all([
                 fetch('/api/riders'),
                 fetch('/api/admin/settings'),
-                fetch(`/api/judge/status?judgeId=${judgeId}&riderId=${riderId}`),
+                fetch(`/api/judge/status?judgeId=${fJudgeId}&riderId=${riderId}`),
             ]);
 
             const ridersData = await ridersRes.json();
@@ -102,12 +105,15 @@ export default function JudgeScorePage() {
             score,
         }));
 
+        const storedJudgeId = localStorage.getItem('fast_judge_id');
+        const finalJudgeId = judgeId || storedJudgeId;
+
         try {
             const res = await fetch('/api/judge/score', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    judgeId,
+                    judgeId: finalJudgeId,
                     riderId,
                     scores: itemScores,
                 }),
@@ -165,7 +171,7 @@ export default function JudgeScorePage() {
                         は既に採点済みです
                     </p>
                     <button
-                        onClick={() => router.push('/judge')}
+                        onClick={() => router.push('/judge/main')}
                         className="btn btn-primary w-full"
                     >
                         選手一覧に戻る
@@ -191,7 +197,7 @@ export default function JudgeScorePage() {
                         {currentScore} / {maxScore} 点
                     </p>
                     <button
-                        onClick={() => router.push('/judge')}
+                        onClick={() => router.push('/judge/main')}
                         className="btn btn-primary w-full"
                     >
                         選手一覧に戻る
@@ -206,7 +212,7 @@ export default function JudgeScorePage() {
             {/* Header */}
             <header className="mb-6">
                 <button
-                    onClick={() => router.push('/judge')}
+                    onClick={() => router.push('/judge/main')}
                     className="text-[var(--text-muted)] hover:text-[var(--foreground)] transition-colors mb-4"
                 >
                     ← 戻る

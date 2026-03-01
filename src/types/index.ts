@@ -73,6 +73,7 @@ export interface ContestSettings {
   animationSortDurationMs: number; // 並べ替えのアニメーション速度 (ms)
   animationStyle: 'Standard' | 'Pop-in' | 'Slide' | 'Flash';
   labelFontSize: 'Small' | 'Medium' | 'Large' | 'Extra Large';
+  judgeCount: number;             // 審査員数 (1-10)
 }
 
 // 評価項目のカラーパレット
@@ -116,6 +117,13 @@ export interface Judge {
   id: string;
   name: string;
   isActive: boolean;
+}
+
+// ジャッジセッション（座席占有状況）
+export interface JudgeSession {
+  judgeId: string;
+  isOccupied: boolean;
+  updatedAt: string;
 }
 
 // ログエントリ
@@ -166,5 +174,6 @@ export const DEFAULT_CONTEST_SETTINGS: ContestSettings = {
   animationSortDurationMs: 3000,
   animationStyle: 'Standard',
   labelFontSize: 'Medium',
+  judgeCount: 3,
 };
 
