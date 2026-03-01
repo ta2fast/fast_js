@@ -35,7 +35,10 @@ export default function JudgeMainPage() {
 
         fetchData();
 
-        // Subscribe to settings changes (for voting status)
+        // Polling fallback (3 seconds) - Same as audience page
+        const pollInterval = setInterval(fetchData, 3000);
+
+        // Subscribe to settings changes (Realtime as a bonus)
         const channel = supabase
             .channel('public:contest_settings')
             .on('postgres_changes', {
@@ -43,14 +46,12 @@ export default function JudgeMainPage() {
                 schema: 'public',
                 table: 'contest_settings'
             }, (payload) => {
-                const newSettings = payload.new as any;
-                // Since updateSettings in lib/supabaseStore.ts handles the complex merge, 
-                // we'll just refetch to be safe and accurate with the internal logic
-                getSettings().then(setSettings);
+                fetchData();
             })
             .subscribe();
 
         return () => {
+            clearInterval(pollInterval);
             supabase.removeChannel(channel);
         };
     }, [router]);
