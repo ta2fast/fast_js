@@ -210,9 +210,27 @@ export default function ResultsPage() {
 
 
 
+    const fetchContestSettings = useCallback(async () => {
+        try {
+            const { data, error } = await supabase.from('contest_settings').select('*').eq('id', 'default').single();
+            if (data && !error) {
+                setSettings({
+                    ...DEFAULT_CONTEST_SETTINGS,
+                    ...data,
+                    evaluationItems: data.evaluation_items || DEFAULT_CONTEST_SETTINGS.evaluationItems,
+                });
+            }
+        } catch (err) {
+            console.error('[Results] Failed to fetch contest settings', err);
+        }
+    }, []);
+
     // === Fetch data WITHOUT updating display (background sync) ===
     const fetchDataSilent = useCallback(async () => {
         try {
+            // Fetch settings alongside scores
+            await fetchContestSettings();
+
             const scoresRes = await fetch('/api/scores', { cache: 'no-store' });
             const scoresData = await scoresRes.json();
 
@@ -228,7 +246,6 @@ export default function ResultsPage() {
             if (!initialLoadDone.current) {
                 initialLoadDone.current = true;
                 setDisplayResults(currentResults);
-                setSettings(DEFAULT_CONTEST_SETTINGS);
 
                 // Start with all bars hidden (0%) and 0 scores displayed
                 setBarRevealedIds([]);
@@ -245,7 +262,7 @@ export default function ResultsPage() {
         } catch (error) {
             console.error('[Results] fetchDataSilent error:', error);
         }
-    }, []);
+    }, [fetchContestSettings]);
 
     const fetchAnimationSettings = useCallback(async () => {
         try {
@@ -374,7 +391,9 @@ export default function ResultsPage() {
     const processedRankings = useMemo(() => {
         if (!settings || displayResults.length === 0) return [];
 
-        const enabledItems = settings.evaluationItems.filter(item => item.enabled);
+        const enabledItems = settings.evaluationItems
+            .filter(item => item.enabled)
+            .sort((a, b) => a.order - b.order);
 
         return displayResults.map(res => {
             // Calculate breakdown based on judge scores
@@ -434,7 +453,9 @@ export default function ResultsPage() {
         );
     }
 
-    const enabledItems = settings.evaluationItems.filter(item => item.enabled);
+    const enabledItems = settings.evaluationItems
+        .filter(item => item.enabled)
+        .sort((a, b) => a.order - b.order);
 
     return (
         <div className="h-screen w-screen bg-black text-white p-4 uppercase overflow-hidden flex flex-col relative">

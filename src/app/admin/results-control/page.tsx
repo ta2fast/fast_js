@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ContestSettings, DEFAULT_CONTEST_SETTINGS } from '@/types';
+import { ContestSettings } from '@/types';
 import { supabase } from '@/lib/supabase';
+import { getSettings } from '@/lib/store';
 
 export default function ResultsControlPage() {
     const [settings, setSettings] = useState<ContestSettings | null>(null);
@@ -16,9 +17,14 @@ export default function ResultsControlPage() {
     }, []);
 
     const fetchSettings = async () => {
-        // Fallback since setting table is removed
-        setSettings(DEFAULT_CONTEST_SETTINGS);
-        setLoading(false);
+        try {
+            const data = await getSettings();
+            setSettings(data);
+        } catch (error) {
+            console.error('Failed to fetch settings:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const triggerRevealItem = (itemId: string, itemName: string) => {
@@ -71,7 +77,9 @@ export default function ResultsControlPage() {
 
     if (!settings) return null;
 
-    const evaluationItems = settings.evaluationItems.filter(item => item.enabled);
+    const evaluationItems = settings.evaluationItems
+        .filter(item => item.enabled)
+        .sort((a, b) => a.order - b.order);
 
     return (
         <div className="min-h-screen bg-[var(--background)] p-4 md:p-8">
