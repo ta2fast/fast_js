@@ -52,4 +52,5 @@ export {
 
     // Reset
     resetContestData,
+    resetAllJudgeSessions,
 } from './supabaseStore';

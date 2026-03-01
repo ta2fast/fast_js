@@ -56,7 +56,15 @@ export default function JudgeLoginPage() {
 
     const handleSelectJudge = async (judgeId: string) => {
         const session = sessions.find(s => s.judgeId === judgeId);
-        if (session?.isOccupied) return;
+        const storedId = localStorage.getItem('fast_judge_id');
+
+        // 同一端末（LocalStorage）の再入室は許可
+        const isSelf = storedId === judgeId;
+
+        if (session?.isOccupied && !isSelf) {
+            alert('この番号はすでに他の端末で使用されています。すでに使用中の場合は、運営にリセットを依頼してください。');
+            return;
+        }
 
         setProcessing(true);
         try {
@@ -88,8 +96,8 @@ export default function JudgeLoginPage() {
                 onClick={() => handleSelectJudge(id)}
                 disabled={isOccupied || processing}
                 className={`flex flex-col items-center justify-center p-6 rounded-2xl transition-all h-40 border-2 ${isOccupied
-                        ? 'bg-zinc-100 border-zinc-200 opacity-50 cursor-not-allowed text-zinc-400'
-                        : 'bg-white border-[var(--primary)] hover:bg-[var(--primary)] hover:text-white text-[var(--primary)] shadow-lg active:scale-95'
+                    ? 'bg-zinc-100 border-zinc-200 opacity-50 cursor-not-allowed text-zinc-400'
+                    : 'bg-white border-[var(--primary)] hover:bg-[var(--primary)] hover:text-white text-[var(--primary)] shadow-lg active:scale-95'
                     }`}
             >
                 <span className="text-4xl mb-2">👤</span>

@@ -57,7 +57,7 @@ export default function JudgeMainPage() {
 
     const handleLogout = async () => {
         if (!judgeId) return;
-        if (!confirm('ログアウトして番号選択に戻りますか？')) return;
+        if (!confirm('この番号を解放して戻りますか？\n（他の人がこの番号を選べるようになります）')) return;
 
         try {
             await releaseJudgeSeat(judgeId);
@@ -99,9 +99,9 @@ export default function JudgeMainPage() {
                 </div>
                 <button
                     onClick={handleLogout}
-                    className="btn btn-ghost btn-sm text-zinc-400 hover:text-red-500"
+                    className="btn btn-ghost btn-sm text-zinc-400 hover:text-red-500 font-bold"
                 >
-                    ログアウト
+                    この番号を解放して戻る
                 </button>
             </header>
 

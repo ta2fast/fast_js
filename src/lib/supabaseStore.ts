@@ -691,6 +691,19 @@ export async function releaseJudgeSeat(judgeId: string): Promise<boolean> {
     return true;
 }
 
+export async function resetAllJudgeSessions(): Promise<boolean> {
+    const { error } = await supabase
+        .from('judge_sessions')
+        .update({ is_occupied: false, updated_at: new Date().toISOString() });
+
+    if (error) {
+        console.error('Failed to reset all judge sessions:', error);
+        return false;
+    }
+    await addLog('setting_change', 'All judge sessions reset', {});
+    return true;
+}
+
 // ==============================
 // Logs
 // ==============================

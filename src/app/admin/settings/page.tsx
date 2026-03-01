@@ -414,6 +414,42 @@ export default function SettingsPage() {
                         {saving ? '処理中...' : '大会を初期化する'}
                     </button>
                 </div>
+
+                {/* Judge Session Reset */}
+                <div className="mt-8 pt-8 border-t border-red-500/20 flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div>
+                        <p className="font-bold">ジャッジログイン状況のリセット</p>
+                        <p className="text-sm text-[var(--text-muted)]">
+                            すべてのジャッジのログイン状態（座席占有）を強制解除します。<br />
+                            「座席が埋まっていてログインできない」と言われた場合に使用してください。
+                        </p>
+                    </div>
+                    <button
+                        onClick={async () => {
+                            if (!confirm('すべてのジャッジログイン状況をリセットしてよろしいですか？')) return;
+
+                            setSaving(true);
+                            try {
+                                const { resetAllJudgeSessions } = await import('@/lib/store');
+                                const success = await resetAllJudgeSessions();
+                                if (success) {
+                                    alert('ジャッジセッションのリセットが完了しました');
+                                } else {
+                                    alert('リセットに失敗しました');
+                                }
+                            } catch (error) {
+                                console.error('Session reset failed:', error);
+                                alert('エラーが発生しました');
+                            } finally {
+                                setSaving(false);
+                            }
+                        }}
+                        disabled={saving}
+                        className="btn btn-primary bg-red-600 hover:bg-red-700 border-none py-3 px-8 shadow-lg active:scale-95"
+                    >
+                        {saving ? '処理中...' : 'ジャッジログイン状況を全リセット'}
+                    </button>
+                </div>
             </div>
         </div>
     );
