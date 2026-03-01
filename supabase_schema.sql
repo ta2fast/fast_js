@@ -132,3 +132,19 @@ CREATE POLICY "Allow public access" ON judge_scores FOR ALL USING (true) WITH CH
 CREATE POLICY "Allow public access" ON audience_votes FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public access" ON contest_settings FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public access" ON logs FOR ALL USING (true) WITH CHECK (true);
+
+-- ジャッジセッションテーブル
+CREATE TABLE IF NOT EXISTS judge_sessions (
+    judge_id TEXT PRIMARY KEY REFERENCES judges(id),
+    is_occupied BOOLEAN DEFAULT FALSE,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- デフォルトのセッションを挿入
+INSERT INTO judge_sessions (judge_id, is_occupied)
+SELECT id, false FROM judges
+ON CONFLICT (judge_id) DO NOTHING;
+
+-- RLS を有効化
+ALTER TABLE judge_sessions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public access" ON judge_sessions FOR ALL USING (true) WITH CHECK (true);
