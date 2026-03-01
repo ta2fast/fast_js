@@ -160,6 +160,44 @@ export async function deleteRider(id: string): Promise<boolean> {
     return true;
 }
 
+export async function reorderRiders(riderId: string, newPosition: number): Promise<boolean> {
+    // 1. 全ライダーを取得して現在の順序を確認
+    const { data: riders, error: fetchError } = await supabase
+        .from('riders')
+        .select('id, display_order')
+        .order('display_order', { ascending: true });
+
+    if (fetchError) throw fetchError;
+    if (!riders) return false;
+
+    // 2. 指定されたライダーと新しい位置（1-indexed）を特定
+    const targetRiderIndex = riders.findIndex(r => r.id === riderId);
+    if (targetRiderIndex === -1) return false;
+
+    const sortedRiders = [...riders];
+    const [targetRider] = sortedRiders.splice(targetRiderIndex, 1);
+
+    // newPositionは1-indexedなので、0-indexedのsplice用に調整
+    const insertIndex = Math.max(0, Math.min(newPosition - 1, sortedRiders.length));
+    sortedRiders.splice(insertIndex, 0, targetRider);
+
+    // 3. 全ライダーのdisplay_orderを再割り当て
+    const updates = sortedRiders.map((rider, index) => ({
+        id: rider.id,
+        display_order: index + 1
+    }));
+
+    // 4. バッチ更新（upsertを使用）
+    const { error: updateError } = await supabase
+        .from('riders')
+        .upsert(updates, { onConflict: 'id' });
+
+    if (updateError) throw updateError;
+
+    await addLog('setting_change', 'Riders reordered', { riderId, newPosition });
+    return true;
+}
+
 // ==============================
 // Judge Scores
 // ==============================

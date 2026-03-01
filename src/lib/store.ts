@@ -11,6 +11,7 @@ export {
     createRider,
     updateRider,
     deleteRider,
+    reorderRiders,
 
     // Judge Scores
     getJudgeScores,

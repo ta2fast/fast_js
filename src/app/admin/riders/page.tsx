@@ -104,40 +104,24 @@ export default function RidersManagementPage() {
         }
     }
 
-    async function moveRider(riderId: string, direction: 'up' | 'down') {
-        const currentIndex = riders.findIndex(r => r.id === riderId);
-        if (currentIndex === -1) return;
-
-        const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
-        if (newIndex < 0 || newIndex >= riders.length) return;
-
+    async function handleReorder(riderId: string, newPosition: number) {
         setReordering(true);
         try {
-            // 入れ替え対象の2つのライダーの順番を交換
-            const currentRider = riders[currentIndex];
-            const swapRider = riders[newIndex];
-
-            // 両方のライダーのdisplayOrderを更新
-            await Promise.all([
-                fetch('/api/riders', {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        id: currentRider.id,
-                        displayOrder: swapRider.displayOrder
-                    }),
+            const res = await fetch('/api/riders', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: riderId,
+                    newPosition: newPosition
                 }),
-                fetch('/api/riders', {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        id: swapRider.id,
-                        displayOrder: currentRider.displayOrder
-                    }),
-                }),
-            ]);
+            });
 
-            fetchRiders();
+            const data = await res.json();
+            if (data.success) {
+                fetchRiders();
+            } else {
+                alert(data.error || '順番の変更に失敗しました');
+            }
         } catch (error) {
             console.error('Failed to reorder riders:', error);
             alert('順番の変更に失敗しました');
@@ -194,23 +178,21 @@ export default function RidersManagementPage() {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                    {/* 並び替えボタン */}
-                                    <button
-                                        onClick={() => moveRider(rider.id, 'up')}
-                                        disabled={index === 0 || reordering}
-                                        className="btn btn-ghost text-sm px-2 py-1 disabled:opacity-30"
-                                        title="上へ移動"
-                                    >
-                                        ↑
-                                    </button>
-                                    <button
-                                        onClick={() => moveRider(rider.id, 'down')}
-                                        disabled={index === riders.length - 1 || reordering}
-                                        className="btn btn-ghost text-sm px-2 py-1 disabled:opacity-30"
-                                        title="下へ移動"
-                                    >
-                                        ↓
-                                    </button>
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-xs text-[var(--text-muted)]">出走順:</span>
+                                        <select
+                                            value={index + 1}
+                                            onChange={(e) => handleReorder(rider.id, parseInt(e.target.value))}
+                                            disabled={reordering}
+                                            className="bg-[var(--surface)] border border-[var(--primary)]/30 rounded px-2 py-1 text-sm font-bold focus:outline-none focus:ring-2 ring-[var(--primary)]/50"
+                                        >
+                                            {riders.map((_, i) => (
+                                                <option key={i + 1} value={i + 1}>
+                                                    {i + 1}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
                                     {/* 編集・削除ボタン */}
                                     <button
                                         onClick={() => openEditModal(rider)}

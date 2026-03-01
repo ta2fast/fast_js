@@ -53,13 +53,20 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
 export async function PUT(request: NextRequest): Promise<NextResponse<ApiResponse<Rider>>> {
     try {
         const body = await request.json();
-        const { id, ...updates } = body;
+        const { id, newPosition, ...updates } = body;
 
         if (!id) {
             return NextResponse.json(
                 { success: false, error: 'IDは必須です' },
                 { status: 400 }
             );
+        }
+
+        // 順序変更の場合
+        if (newPosition !== undefined) {
+            const { reorderRiders } = await import('@/lib/store');
+            const success = await reorderRiders(id, newPosition);
+            return NextResponse.json({ success, data: null as any });
         }
 
         const rider = await updateRider(id, updates);
