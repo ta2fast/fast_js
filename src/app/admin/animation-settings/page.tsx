@@ -14,7 +14,6 @@ interface AnimationSettings {
     sort_transition_speed: number;
     animation_style: string;
     label_font_size: string;
-    judge_count: number;
 }
 
 const DEFAULT_SETTINGS: AnimationSettings = {
@@ -25,7 +24,6 @@ const DEFAULT_SETTINGS: AnimationSettings = {
     sort_transition_speed: 1500,
     animation_style: 'Pop-in',
     label_font_size: 'text-8xl',
-    judge_count: 3,
 };
 
 export default function AnimationSettingsPage() {
@@ -58,7 +56,6 @@ export default function AnimationSettingsPage() {
                     sort_transition_speed: Number(data.sort_transition_speed),
                     animation_style: data.animation_style || 'Pop-in',
                     label_font_size: data.label_font_size || 'text-8xl',
-                    judge_count: data.judge_count ?? 3,
                 });
             }
         } catch (err) {
@@ -84,7 +81,6 @@ export default function AnimationSettingsPage() {
                     sort_transition_speed: settings.sort_transition_speed,
                     animation_style: settings.animation_style,
                     label_font_size: settings.label_font_size,
-                    judge_count: settings.judge_count,
                     updated_at: new Date().toISOString()
                 });
 
@@ -111,7 +107,7 @@ export default function AnimationSettingsPage() {
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
-        const isNumeric = type === 'number' || ['label_display_time', 'bar_transition_speed', 'sort_delay_time', 'sort_transition_speed', 'judge_count'].includes(name);
+        const isNumeric = type === 'number' || ['label_display_time', 'bar_transition_speed', 'sort_delay_time', 'sort_transition_speed'].includes(name);
         setSettings(prev => ({
             ...prev,
             [name]: isNumeric ? Number(value) : value
@@ -247,22 +243,6 @@ export default function AnimationSettingsPage() {
                                 </select>
                             </div>
 
-                            <div className="form-control">
-                                <label className="label font-bold text-sm text-[var(--text-muted)]">
-                                    審査員数 (1〜10)
-                                </label>
-                                <input
-                                    type="number"
-                                    name="judge_count"
-                                    value={settings.judge_count || 3}
-                                    onChange={handleChange}
-                                    className="input input-bordered w-full"
-                                    min="1"
-                                    max="10"
-                                    required
-                                />
-                                <span className="text-xs text-zinc-500 mt-1">ジャッジ用ログイン画面のボタン数に反映されます</span>
-                            </div>
                         </div>
 
                         {message && (

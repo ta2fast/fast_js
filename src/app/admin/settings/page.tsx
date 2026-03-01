@@ -3,9 +3,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ContestSettings, EvaluationItem, DEFAULT_CONTEST_SETTINGS } from '@/types';
+import { ContestSettings, EvaluationItem } from '@/types';
 import { calculateMaxJudgeScore } from '@/lib/scoring';
 import AdminHeader from '@/components/admin/AdminHeader';
+import { getSettings, updateSettings } from '@/lib/store';
 
 export default function SettingsPage() {
     const [settings, setSettings] = useState<ContestSettings | null>(null);
@@ -15,10 +16,15 @@ export default function SettingsPage() {
     const [showItemModal, setShowItemModal] = useState(false);
     const router = useRouter();
 
-    const fetchSettings = useCallback(() => {
-        // Fallback to default constants as DB table is removed
-        setSettings(DEFAULT_CONTEST_SETTINGS);
-        setLoading(false);
+    const fetchSettings = useCallback(async () => {
+        try {
+            const data = await getSettings();
+            setSettings(data);
+        } catch (error) {
+            console.error('Failed to fetch settings:', error);
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
     useEffect(() => {
@@ -26,15 +32,17 @@ export default function SettingsPage() {
     }, [fetchSettings]);
 
     async function saveSettings(updates: Partial<ContestSettings>) {
+        if (!settings) return;
         setSaving(true);
-        // Mock save by just updating local state for now
-        // since the DB table 'settings' is not available
-        setTimeout(() => {
-            if (settings) {
-                setSettings({ ...settings, ...updates });
-            }
+        try {
+            const updated = await updateSettings(updates);
+            setSettings(updated);
+        } catch (error) {
+            console.error('Failed to save settings:', error);
+            alert('設定の保存に失敗しました');
+        } finally {
             setSaving(false);
-        }, 300);
+        }
     }
 
     function handleItemEdit(item: EvaluationItem) {
@@ -143,6 +151,20 @@ export default function SettingsPage() {
                                 onChange={e => saveSettings({ contestDate: e.target.value })}
                                 className="input"
                             />
+                        </div>
+                        <div>
+                            <label className="block text-sm text-[var(--text-muted)] mb-2">
+                                審査員数 (1〜10)
+                            </label>
+                            <input
+                                type="number"
+                                value={settings.judgeCount || 3}
+                                onChange={e => saveSettings({ judgeCount: Math.max(1, Math.min(10, parseInt(e.target.value) || 3)) })}
+                                className="input"
+                                min="1"
+                                max="10"
+                            />
+                            <p className="text-[10px] text-[var(--text-muted)] mt-1">※ジャッジログイン画面のボタン数に反映されます</p>
                         </div>
                     </div>
                 </div>

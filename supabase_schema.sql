@@ -60,6 +60,7 @@ CREATE TABLE contest_settings (
     revealed_item_ids JSONB DEFAULT '[]'::jsonb,
     animation_delay_score_ms INTEGER DEFAULT 2000,
     animation_delay_rank_ms INTEGER DEFAULT 2000,
+    judge_count INTEGER DEFAULT 3,
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
