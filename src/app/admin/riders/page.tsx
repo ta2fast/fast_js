@@ -165,9 +165,26 @@ export default function RidersManagementPage() {
                                 style={{ animationDelay: `${index * 0.05}s` }}
                             >
                                 <div className="flex items-center gap-3">
-                                    {/* 出走順表示 */}
-                                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)] flex items-center justify-center text-lg font-bold text-white">
-                                        {index + 1}
+                                    {/* 出走順表示（プルダウン形式に変更） */}
+                                    <div className="relative group">
+                                        <select
+                                            value={index + 1}
+                                            onChange={(e) => handleReorder(rider.id, parseInt(e.target.value))}
+                                            disabled={reordering}
+                                            className="appearance-none w-12 h-12 rounded-lg bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)] flex items-center justify-center text-lg font-extrabold text-white text-center cursor-pointer hover:scale-105 transition-transform shadow-md focus:outline-none focus:ring-4 ring-[var(--primary)]/30 border-none"
+                                            title="出走順を変更"
+                                        >
+                                            {riders.map((_, i) => (
+                                                <option key={i + 1} value={i + 1} className="text-black bg-white">
+                                                    {i + 1}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-sm pointer-events-none">
+                                            <svg className="w-3 h-3 text-[var(--primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </div>
                                     </div>
                                     {/* 選手情報 */}
                                     <div>
@@ -178,21 +195,6 @@ export default function RidersManagementPage() {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xs text-[var(--text-muted)]">出走順:</span>
-                                        <select
-                                            value={index + 1}
-                                            onChange={(e) => handleReorder(rider.id, parseInt(e.target.value))}
-                                            disabled={reordering}
-                                            className="bg-[var(--surface)] border border-[var(--primary)]/30 rounded px-2 py-1 text-sm font-bold focus:outline-none focus:ring-2 ring-[var(--primary)]/50"
-                                        >
-                                            {riders.map((_, i) => (
-                                                <option key={i + 1} value={i + 1}>
-                                                    {i + 1}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
                                     {/* 編集・削除ボタン */}
                                     <button
                                         onClick={() => openEditModal(rider)}
