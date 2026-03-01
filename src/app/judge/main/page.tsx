@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Rider, ContestSettings } from '@/types';
-import { getRiders, getSettings, releaseJudgeSeat } from '@/lib/store';
+import { getRiders, getSettings, getJudgeScoresByJudge, releaseJudgeSeat } from '@/lib/store';
 import { supabase } from '@/lib/supabase';
 
 export default function JudgeMainPage() {
@@ -11,6 +11,7 @@ export default function JudgeMainPage() {
     const [judgeId, setJudgeId] = useState<string | null>(null);
     const [riders, setRiders] = useState<Rider[]>([]);
     const [settings, setSettings] = useState<ContestSettings | null>(null);
+    const [scoredRiderIds, setScoredRiderIds] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -22,10 +23,16 @@ export default function JudgeMainPage() {
         setJudgeId(storedId);
 
         const fetchData = async () => {
+            const currentJudgeId = localStorage.getItem('fast_judge_id');
             try {
-                const [r, s] = await Promise.all([getRiders(), getSettings()]);
+                const [r, s, scores] = await Promise.all([
+                    getRiders(),
+                    getSettings(),
+                    currentJudgeId ? getJudgeScoresByJudge(currentJudgeId) : Promise.resolve([])
+                ]);
                 setRiders(r);
                 setSettings(s);
+                setScoredRiderIds(scores.map(sc => sc.riderId));
             } catch (error) {
                 console.error('Failed to fetch judge main data:', error);
             } finally {
@@ -130,7 +137,9 @@ export default function JudgeMainPage() {
                             <p className="text-white/80 font-medium">{currentRider.riderName}</p>
 
                             <div className="mt-6 pt-6 border-t border-white/20 flex justify-between items-center">
-                                <span className="font-bold">採点を開始する</span>
+                                <span className="font-bold">
+                                    {scoredRiderIds.includes(currentRider.id) ? '✅ 採点済み（修正する）' : '採点を開始する'}
+                                </span>
                                 <span className="w-8 h-8 rounded-full bg-white text-[var(--primary)] flex items-center justify-center font-bold">→</span>
                             </div>
                         </button>
@@ -164,6 +173,11 @@ export default function JudgeMainPage() {
                                 </div>
                                 {rider.id === settings?.currentRiderId && isVotingOpen && (
                                     <span className="text-[var(--primary)] text-xs font-black animate-pulse">VOTING NOW</span>
+                                )}
+                                {scoredRiderIds.includes(rider.id) && (
+                                    <span className="ml-2 px-2 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-lg border border-emerald-200">
+                                        投票済み
+                                    </span>
                                 )}
                             </div>
                         ))}

@@ -15,6 +15,8 @@ export {
     // Judge Scores
     getJudgeScores,
     getJudgeScoresForRider,
+    getJudgeScoresByJudge,
+    getJudgeScore,
     hasJudgeScored,
     submitJudgeScore,
 

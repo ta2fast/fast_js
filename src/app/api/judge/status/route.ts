@@ -10,6 +10,7 @@ interface JudgeStatus {
     judgeId: string;
     riderId: string;
     hasScored: boolean;
+    scores?: { itemId: string; score: number }[];
 }
 
 // GET /api/judge/status - ジャッジの採点状況を確認
@@ -32,11 +33,17 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
             );
         }
 
-        const hasScored = await hasJudgeScored(judgeId, riderId);
+        const { getJudgeScore } = await import('@/lib/store');
+        const scoreData = await getJudgeScore(judgeId, riderId);
 
         return NextResponse.json({
             success: true,
-            data: { judgeId, riderId, hasScored }
+            data: {
+                judgeId,
+                riderId,
+                hasScored: !!scoreData,
+                scores: scoreData ? scoreData.scores : undefined
+            }
         });
     } catch (error) {
         return NextResponse.json(

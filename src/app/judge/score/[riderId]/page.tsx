@@ -57,6 +57,13 @@ export default function JudgeScorePage() {
 
             if (statusData.success && statusData.data.hasScored) {
                 setAlreadyScored(true);
+                if (statusData.data.scores) {
+                    const initialScores: Record<string, number> = {};
+                    statusData.data.scores.forEach((s: { itemId: string; score: number }) => {
+                        initialScores[s.itemId] = s.score;
+                    });
+                    setScores(initialScores);
+                }
             }
         } catch (err) {
             console.error('Failed to fetch data:', err);
@@ -156,30 +163,6 @@ export default function JudgeScorePage() {
         );
     }
 
-    // 既に採点済み
-    if (alreadyScored) {
-        return (
-            <div className="min-h-screen flex flex-col items-center justify-center p-4 animate-fadeIn">
-                <div className="card p-8 text-center max-w-md w-full">
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[var(--secondary)] to-amber-600 flex items-center justify-center mx-auto mb-6">
-                        <span className="text-4xl">⚠️</span>
-                    </div>
-                    <h2 className="text-2xl font-bold mb-4">採点済み</h2>
-                    <p className="text-[var(--text-muted)] mb-6">
-                        <span className="text-[var(--foreground)] font-bold">{rider.name}</span>
-                        <br />
-                        は既に採点済みです
-                    </p>
-                    <button
-                        onClick={() => router.push('/judge/main')}
-                        className="btn btn-primary w-full"
-                    >
-                        選手一覧に戻る
-                    </button>
-                </div>
-            </div>
-        );
-    }
 
     // 採点完了
     if (submitted) {
@@ -265,7 +248,7 @@ export default function JudgeScorePage() {
                     disabled={!allScored}
                     className="btn btn-primary w-full text-lg py-4"
                 >
-                    採点を確定する
+                    {alreadyScored ? '採点を更新する' : '採点を確定する'}
                 </button>
             </div>
 
@@ -273,7 +256,9 @@ export default function JudgeScorePage() {
             {showConfirm && (
                 <div className="modal-overlay" onClick={() => setShowConfirm(false)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
-                        <h3 className="text-xl font-bold mb-4 text-center">採点を確定しますか？</h3>
+                        <h3 className="text-xl font-bold mb-4 text-center">
+                            {alreadyScored ? '採点を更新しますか？' : '採点を確定しますか？'}
+                        </h3>
                         <p className="text-[var(--text-muted)] text-center mb-2">
                             {rider.name}
                         </p>
@@ -291,7 +276,7 @@ export default function JudgeScorePage() {
                             ))}
                         </div>
                         <p className="text-center text-[var(--danger)] text-sm mb-4">
-                            ⚠️ 確定後は変更できません
+                            {alreadyScored ? '⚠️ 更新後のデータが保存されます' : '⚠️ 確定後は変更が反映されます'}
                         </p>
                         <div className="flex gap-3">
                             <button
@@ -305,7 +290,7 @@ export default function JudgeScorePage() {
                                 disabled={submitting}
                                 className="btn btn-primary flex-1"
                             >
-                                {submitting ? '送信中...' : '確定する'}
+                                {submitting ? '送信中...' : (alreadyScored ? '更新する' : '確定する')}
                             </button>
                         </div>
                     </div>

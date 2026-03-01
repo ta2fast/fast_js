@@ -45,15 +45,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
             );
         }
 
-        // 既に採点済みかチェック
-        const alreadyScored = await hasJudgeScored(judgeId, riderId);
-        if (alreadyScored) {
-            return NextResponse.json(
-                { success: false, error: '既に採点済みです' },
-                { status: 400 }
-            );
-        }
-
         // 設定を取得して合計点を計算
         const settings = await getSettings();
         const totalScore = calculateJudgeScore(scores, settings.evaluationItems);

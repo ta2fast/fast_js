@@ -201,6 +201,45 @@ export async function getJudgeScoresForRider(riderId: string): Promise<JudgeScor
     }));
 }
 
+export async function getJudgeScoresByJudge(judgeId: string): Promise<JudgeScore[]> {
+    const { data, error } = await supabase
+        .from('judge_scores')
+        .select('*')
+        .eq('judge_id', judgeId);
+
+    if (error) throw error;
+    return (data || []).map(row => ({
+        id: row.id,
+        judgeId: row.judge_id,
+        riderId: row.rider_id,
+        scores: row.scores,
+        totalScore: parseFloat(row.total_score),
+        submittedAt: row.submitted_at,
+        locked: row.locked,
+    }));
+}
+
+export async function getJudgeScore(judgeId: string, riderId: string): Promise<JudgeScore | null> {
+    const { data, error } = await supabase
+        .from('judge_scores')
+        .select('*')
+        .eq('judge_id', judgeId)
+        .eq('rider_id', riderId)
+        .maybeSingle();
+
+    if (error) throw error;
+    if (!data) return null;
+    return {
+        id: data.id,
+        judgeId: data.judge_id,
+        riderId: data.rider_id,
+        scores: data.scores,
+        totalScore: parseFloat(data.total_score),
+        submittedAt: data.submitted_at,
+        locked: data.locked,
+    };
+}
+
 export async function hasJudgeScored(judgeId: string, riderId: string): Promise<boolean> {
     const { data, error } = await supabase
         .from('judge_scores')
@@ -214,10 +253,36 @@ export async function hasJudgeScored(judgeId: string, riderId: string): Promise<
 }
 
 export async function submitJudgeScore(score: Omit<JudgeScore, 'id' | 'submittedAt' | 'locked'>): Promise<JudgeScore> {
-    // Check if already scored
-    const hasScored = await hasJudgeScored(score.judgeId, score.riderId);
-    if (hasScored) {
-        throw new Error('既に採点済みです');
+    const { data: existing } = await supabase
+        .from('judge_scores')
+        .select('id')
+        .eq('judge_id', score.judgeId)
+        .eq('rider_id', score.riderId)
+        .maybeSingle();
+
+    if (existing) {
+        const { data, error } = await supabase
+            .from('judge_scores')
+            .update({
+                scores: score.scores,
+                total_score: score.totalScore,
+                submitted_at: new Date().toISOString(),
+            })
+            .eq('id', existing.id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        await addLog('judge_score', 'Judge score updated', { score: data });
+        return {
+            id: data.id,
+            judgeId: data.judge_id,
+            riderId: data.rider_id,
+            scores: data.scores,
+            totalScore: parseFloat(data.total_score),
+            submittedAt: data.submitted_at,
+            locked: data.locked,
+        };
     }
 
     const newScore = {
