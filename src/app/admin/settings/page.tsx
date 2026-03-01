@@ -90,6 +90,24 @@ export default function SettingsPage() {
         saveSettings({ evaluationItems: newItems });
     }
 
+    function handleItemReorder(itemId: string, newPosition: number) {
+        if (!settings) return;
+
+        const items = [...settings.evaluationItems].sort((a, b) => a.order - b.order);
+        const itemIndex = items.findIndex(i => i.id === itemId);
+        if (itemIndex === -1) return;
+
+        const [item] = items.splice(itemIndex, 1);
+        items.splice(newPosition - 1, 0, item);
+
+        const updatedItems = items.map((item, index) => ({
+            ...item,
+            order: index + 1
+        }));
+
+        saveSettings({ evaluationItems: updatedItems });
+    }
+
     function toggleItemEnabled(itemId: string) {
         if (!settings) return;
 
@@ -275,9 +293,27 @@ export default function SettingsPage() {
                                         }`}
                                 >
                                     <div className="flex items-center gap-4">
-                                        <span className="text-[var(--text-muted)] text-sm w-6">
-                                            #{index + 1}
-                                        </span>
+                                        {/* 表示順（プルダウン形式に変更） */}
+                                        <div className="relative group">
+                                            <select
+                                                value={index + 1}
+                                                onChange={(e) => handleItemReorder(item.id, parseInt(e.target.value))}
+                                                disabled={saving}
+                                                className="appearance-none w-10 h-10 rounded-lg bg-gradient-to-br from-[var(--secondary)] to-[var(--primary)] flex items-center justify-center text-sm font-extrabold text-white text-center cursor-pointer hover:scale-105 transition-transform shadow-md focus:outline-none focus:ring-4 ring-[var(--secondary)]/30 border-none"
+                                                title="表示順を変更"
+                                            >
+                                                {settings.evaluationItems.map((_, i) => (
+                                                    <option key={i + 1} value={i + 1} className="text-black bg-white">
+                                                        {i + 1}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-sm pointer-events-none">
+                                                <svg className="w-2.5 h-2.5 text-[var(--secondary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </div>
+                                        </div>
                                         <div>
                                             <h3 className="font-bold">{item.name}</h3>
                                             <p className="text-sm text-[var(--text-muted)]">
@@ -374,21 +410,6 @@ export default function SettingsPage() {
                                         ))}
                                     </select>
                                 </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm text-[var(--text-muted)] mb-2">
-                                    表示順
-                                </label>
-                                <select
-                                    value={editingItem.order}
-                                    onChange={e => setEditingItem({ ...editingItem, order: parseInt(e.target.value) })}
-                                    className="input"
-                                >
-                                    {[...Array(Math.max(editingItem.order, settings.evaluationItems.length + 1))].map((_, i) => (
-                                        <option key={i + 1} value={i + 1}>{i + 1}</option>
-                                    ))}
-                                </select>
                             </div>
                         </div>
 
