@@ -156,14 +156,15 @@ export default function SettingsPage() {
                             <label className="block text-sm text-[var(--text-muted)] mb-2">
                                 審査員数 (1〜10)
                             </label>
-                            <input
-                                type="number"
+                            <select
                                 value={settings.judgeCount || 3}
-                                onChange={e => saveSettings({ judgeCount: Math.max(1, Math.min(10, parseInt(e.target.value) || 3)) })}
+                                onChange={e => saveSettings({ judgeCount: parseInt(e.target.value) })}
                                 className="input"
-                                min="1"
-                                max="10"
-                            />
+                            >
+                                {[...Array(10)].map((_, i) => (
+                                    <option key={i + 1} value={i + 1}>{i + 1}名</option>
+                                ))}
+                            </select>
                             <p className="text-[10px] text-[var(--text-muted)] mt-1">※ジャッジログイン画面のボタン数に反映されます</p>
                         </div>
                     </div>
@@ -177,53 +178,59 @@ export default function SettingsPage() {
                             <label className="block text-sm text-[var(--text-muted)] mb-2">
                                 観客点ウエイト（×{settings.audienceWeight} = 最大{settings.audienceMaxScore * settings.audienceWeight}点）
                             </label>
-                            <input
-                                type="number"
+                            <select
                                 value={settings.audienceWeight}
-                                onChange={e => saveSettings({ audienceWeight: parseInt(e.target.value) || 1 })}
+                                onChange={e => saveSettings({ audienceWeight: parseInt(e.target.value) })}
                                 className="input"
-                                min="1"
-                                max="10"
-                            />
+                            >
+                                {[...Array(10)].map((_, i) => (
+                                    <option key={i + 1} value={i + 1}>{i + 1}倍</option>
+                                ))}
+                            </select>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm text-[var(--text-muted)] mb-2">
                                     最小点
                                 </label>
-                                <input
-                                    type="number"
+                                <select
                                     value={settings.audienceMinScore}
-                                    onChange={e => saveSettings({ audienceMinScore: parseInt(e.target.value) || 1 })}
+                                    onChange={e => saveSettings({ audienceMinScore: parseInt(e.target.value) })}
                                     className="input"
-                                    min="1"
-                                />
+                                >
+                                    {[...Array(10)].map((_, i) => (
+                                        <option key={i} value={i}>{i}点</option>
+                                    ))}
+                                </select>
                             </div>
                             <div>
                                 <label className="block text-sm text-[var(--text-muted)] mb-2">
                                     最大点
                                 </label>
-                                <input
-                                    type="number"
+                                <select
                                     value={settings.audienceMaxScore}
-                                    onChange={e => saveSettings({ audienceMaxScore: parseInt(e.target.value) || 5 })}
+                                    onChange={e => saveSettings({ audienceMaxScore: parseInt(e.target.value) })}
                                     className="input"
-                                    min="1"
-                                />
+                                >
+                                    {[...Array(20)].map((_, i) => (
+                                        <option key={i + 1} value={i + 1}>{i + 1}点</option>
+                                    ))}
+                                </select>
                             </div>
                         </div>
                         <div>
                             <label className="block text-sm text-[var(--text-muted)] mb-2">
                                 投票締切秒数
                             </label>
-                            <input
-                                type="number"
+                            <select
                                 value={settings.votingDeadlineSeconds}
-                                onChange={e => saveSettings({ votingDeadlineSeconds: parseInt(e.target.value) || 30 })}
+                                onChange={e => saveSettings({ votingDeadlineSeconds: parseInt(e.target.value) })}
                                 className="input"
-                                min="10"
-                                max="300"
-                            />
+                            >
+                                {[10, 20, 30, 45, 60, 90, 120, 180, 240, 300].map(sec => (
+                                    <option key={sec} value={sec}>{sec}秒</option>
+                                ))}
+                            </select>
                         </div>
                         <div className="flex items-center gap-3">
                             <input
@@ -327,14 +334,15 @@ export default function SettingsPage() {
                                 <label className="block text-sm text-[var(--text-muted)] mb-2">
                                     ウエイト
                                 </label>
-                                <input
-                                    type="number"
+                                <select
                                     value={editingItem.weight}
-                                    onChange={e => setEditingItem({ ...editingItem, weight: parseInt(e.target.value) || 1 })}
+                                    onChange={e => setEditingItem({ ...editingItem, weight: parseInt(e.target.value) })}
                                     className="input"
-                                    min="1"
-                                    max="10"
-                                />
+                                >
+                                    {[...Array(10)].map((_, i) => (
+                                        <option key={i + 1} value={i + 1}>{i + 1}倍</option>
+                                    ))}
+                                </select>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
@@ -342,25 +350,29 @@ export default function SettingsPage() {
                                     <label className="block text-sm text-[var(--text-muted)] mb-2">
                                         最小点
                                     </label>
-                                    <input
-                                        type="number"
+                                    <select
                                         value={editingItem.minScore}
-                                        onChange={e => setEditingItem({ ...editingItem, minScore: parseInt(e.target.value) || 1 })}
+                                        onChange={e => setEditingItem({ ...editingItem, minScore: parseInt(e.target.value) })}
                                         className="input"
-                                        min="1"
-                                    />
+                                    >
+                                        {[...Array(10)].map((_, i) => (
+                                            <option key={i} value={i}>{i}点</option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div>
                                     <label className="block text-sm text-[var(--text-muted)] mb-2">
                                         最大点
                                     </label>
-                                    <input
-                                        type="number"
+                                    <select
                                         value={editingItem.maxScore}
-                                        onChange={e => setEditingItem({ ...editingItem, maxScore: parseInt(e.target.value) || 5 })}
+                                        onChange={e => setEditingItem({ ...editingItem, maxScore: parseInt(e.target.value) })}
                                         className="input"
-                                        min="1"
-                                    />
+                                    >
+                                        {[...Array(20)].map((_, i) => (
+                                            <option key={i + 1} value={i + 1}>{i + 1}点</option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
 
@@ -368,13 +380,15 @@ export default function SettingsPage() {
                                 <label className="block text-sm text-[var(--text-muted)] mb-2">
                                     表示順
                                 </label>
-                                <input
-                                    type="number"
+                                <select
                                     value={editingItem.order}
-                                    onChange={e => setEditingItem({ ...editingItem, order: parseInt(e.target.value) || 1 })}
+                                    onChange={e => setEditingItem({ ...editingItem, order: parseInt(e.target.value) })}
                                     className="input"
-                                    min="1"
-                                />
+                                >
+                                    {[...Array(Math.max(editingItem.order, settings.evaluationItems.length + 1))].map((_, i) => (
+                                        <option key={i + 1} value={i + 1}>{i + 1}</option>
+                                    ))}
+                                </select>
                             </div>
                         </div>
 
