@@ -434,12 +434,11 @@ export default function SettingsPage() {
                                 const success = await resetAllJudgeSessions();
                                 if (success) {
                                     alert('ジャッジセッションのリセットが完了しました');
-                                } else {
-                                    alert('リセットに失敗しました');
                                 }
-                            } catch (error) {
+                            } catch (error: any) {
                                 console.error('Session reset failed:', error);
-                                alert('エラーが発生しました');
+                                const message = error?.message || '不明なエラー';
+                                alert(`リセットに失敗しました: ${message}`);
                             } finally {
                                 setSaving(false);
                             }

@@ -692,13 +692,16 @@ export async function releaseJudgeSeat(judgeId: string): Promise<boolean> {
 }
 
 export async function resetAllJudgeSessions(): Promise<boolean> {
+    // PostgREST supports unfiltered updates only if specifically configured.
+    // To be safe, we add a filter that matches all rows.
     const { error } = await supabase
         .from('judge_sessions')
-        .update({ is_occupied: false, updated_at: new Date().toISOString() });
+        .update({ is_occupied: false, updated_at: new Date().toISOString() })
+        .neq('judge_id', '');
 
     if (error) {
         console.error('Failed to reset all judge sessions:', error);
-        return false;
+        throw error; // Throw so the UI can catch it
     }
     await addLog('setting_change', 'All judge sessions reset', {});
     return true;
