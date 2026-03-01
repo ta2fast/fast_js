@@ -860,3 +860,30 @@ export async function resetContestData(): Promise<void> {
         throw err;
     }
 }
+
+export async function resetScoresAndVotes(): Promise<void> {
+    try {
+        // 1. Delete data from main tables (Preserve logs)
+        const results = await Promise.all([
+            supabase.from('judge_scores').delete().neq('id', ''),
+            supabase.from('audience_votes').delete().neq('id', ''),
+        ]);
+
+        const errors = results.filter(r => r.error).map(r => r.error);
+        if (errors.length > 0) {
+            console.error('Failed to reset scores or votes:', errors);
+            throw new Error('データの削除に失敗しました');
+        }
+
+        // 2. Reset settings (current rider and voting status)
+        await updateSettings({
+            currentRiderId: null,
+            votingEnabled: false,
+        });
+
+        await addLog('setting_change', 'Judge scores and audience votes reset', {});
+    } catch (err) {
+        console.error('resetScoresAndVotes error:', err);
+        throw err;
+    }
+}

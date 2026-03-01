@@ -104,6 +104,27 @@ export default function AdminPage() {
         }
     };
 
+    const handleResetScores = async () => {
+        if (!confirm('【警告】すべてのジャッジ点、観客投票、および現在の選手選択をリセットします。本当によろしいですか？\n※ログ（履歴）は削除されません。')) return;
+
+        setLoading(true); // Reuse loading state for simplicity or add a new one
+        try {
+            const res = await fetch('/api/admin/reset-scores', { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                alert('リセットが完了しました');
+                fetchData();
+            } else {
+                alert(`リセットに失敗しました: ${data.error}`);
+            }
+        } catch (error) {
+            console.error('Reset scores failed:', error);
+            alert('エラーが発生しました');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const currentRider = riders.find(r => r.id === settings?.currentRiderId);
 
     if (loading) {
@@ -231,7 +252,15 @@ export default function AdminPage() {
             <div className="card shadow-xl overflow-hidden">
                 <div className="flex items-center justify-between p-6 bg-[var(--surface-light)] border-b border-[var(--surface-border)]">
                     <h2 className="text-xl font-bold flex items-center gap-2">🏆 大会ランキング</h2>
-                    <a href="/api/admin/export?type=results" className="btn btn-ghost btn-sm" download>CSV Export</a>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={handleResetScores}
+                            className="btn btn-danger btn-sm px-4"
+                        >
+                            🗑️ 採点リセット
+                        </button>
+                        <a href="/api/admin/export?type=results" className="btn btn-ghost btn-sm" download>CSV Export</a>
+                    </div>
                 </div>
 
                 <div className="overflow-x-auto">
