@@ -38,6 +38,7 @@ export {
     createJudge,
     updateJudge,
     deleteJudge,
+    ensureJudgeExists,
 
     // Logs
     getLogs,

@@ -726,6 +726,51 @@ export async function setVotingEnabled(enabled: boolean, riderId?: string): Prom
 // Judges
 // ==============================
 
+/**
+ * ジャッジIDに対応するレコードが存在しない場合、自動で作成する。
+ * judge_count 増加時にレコードが未作成のケースに対応。
+ */
+export async function ensureJudgeExists(judgeId: string): Promise<void> {
+    // judgeN 形式からインデックスを取得
+    const match = judgeId.match(/^judge(\d+)$/);
+    if (!match) return; // judgeN形式でなければスキップ
+
+    const judgeNumber = parseInt(match[1]);
+
+    const { data: existing } = await supabase
+        .from('judges')
+        .select('id')
+        .eq('id', judgeId)
+        .maybeSingle();
+
+    if (!existing) {
+        // judges テーブルにレコードを作成
+        const { error: judgeError } = await supabase.from('judges').insert({
+            id: judgeId,
+            name: `ジャッジ${judgeNumber}`,
+            is_active: true,
+        });
+
+        if (judgeError) {
+            console.error(`Failed to auto-create judge ${judgeId}:`, judgeError);
+            throw judgeError;
+        }
+
+        // judge_sessions テーブルにもレコードを作成
+        const { error: sessionError } = await supabase.from('judge_sessions').insert({
+            judge_id: judgeId,
+            is_occupied: false,
+        });
+
+        if (sessionError) {
+            console.error(`Failed to auto-create judge session ${judgeId}:`, sessionError);
+            // セッション作成失敗はスコア送信をブロックしない
+        }
+
+        console.log(`Auto-provisioned judge: ${judgeId}`);
+    }
+}
+
 export async function getJudges(): Promise<Judge[]> {
     const { data, error } = await supabase
         .from('judges')

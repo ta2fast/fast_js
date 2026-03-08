@@ -45,6 +45,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
             );
         }
 
+        // ジャッジが存在しない場合は自動作成（judge_count増加に対応）
+        const { ensureJudgeExists } = await import('@/lib/supabaseStore');
+        await ensureJudgeExists(judgeId);
+
         // 設定を取得して合計点を計算
         const settings = await getSettings();
         const totalScore = calculateJudgeScore(scores, settings.evaluationItems);
