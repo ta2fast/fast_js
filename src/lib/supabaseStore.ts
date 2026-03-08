@@ -655,6 +655,53 @@ export async function updateSettings(updates: Partial<ContestSettings>): Promise
             throw error;
         }
 
+        // ジャッジ数の同期ロジック
+        if (updates.judgeCount !== undefined && updates.judgeCount !== currentSettings.judgeCount) {
+            const newCount = updates.judgeCount;
+            const { data: existingJudges, error: judgesError } = await supabase
+                .from('judges')
+                .select('id');
+
+            if (!judgesError && existingJudges) {
+                const existingIds = existingJudges.map(j => j.id);
+
+                // 不足しているジャッジを追加
+                for (let i = 1; i <= newCount; i++) {
+                    const judgeId = `judge${i}`;
+                    if (!existingIds.includes(judgeId)) {
+                        await supabase.from('judges').insert({
+                            id: judgeId,
+                            name: `ジャッジ${i}`,
+                            is_active: true
+                        });
+
+                        await supabase.from('judge_sessions').insert({
+                            judge_id: judgeId,
+                            is_occupied: false
+                        });
+                    } else {
+                        // 既存のジャッジを有効化
+                        await supabase.from('judges')
+                            .update({ is_active: true })
+                            .eq('id', judgeId);
+                    }
+                }
+
+                // 範囲外のジャッジを無効化
+                const maxExisting = existingJudges.length;
+                if (maxExisting > newCount) {
+                    for (let i = newCount + 1; i <= 20; i++) { // 安全のため20番までチェック
+                        const judgeId = `judge${i}`;
+                        if (existingIds.includes(judgeId)) {
+                            await supabase.from('judges')
+                                .update({ is_active: false })
+                                .eq('id', judgeId);
+                        }
+                    }
+                }
+            }
+        }
+
         await addLog('setting_change', 'Settings updated', { updates });
         return getSettings();
     } catch (err) {
