@@ -269,13 +269,13 @@ export default function ResultsPage() {
             const { data, error } = await supabase.from('animation_settings').select('*').eq('id', 1).single();
             if (data && !error) {
                 const newSettings = {
-                    label_display_time: Number(data.label_display_time) ?? DEFAULT_ANIMATION_SETTINGS.label_display_time,
-                    bar_transition_speed: Number(data.bar_transition_speed) ?? DEFAULT_ANIMATION_SETTINGS.bar_transition_speed,
-                    sort_delay_time: Number(data.sort_delay_time) ?? DEFAULT_ANIMATION_SETTINGS.sort_delay_time,
-                    sort_transition_speed: Number(data.sort_transition_speed) ?? DEFAULT_ANIMATION_SETTINGS.sort_transition_speed,
+                    label_display_time: (data.label_display_time < 100 ? data.label_display_time * 1000 : data.label_display_time) ?? DEFAULT_ANIMATION_SETTINGS.label_display_time,
+                    bar_transition_speed: (data.bar_transition_speed < 100 ? data.bar_transition_speed * 1000 : data.bar_transition_speed) ?? DEFAULT_ANIMATION_SETTINGS.bar_transition_speed,
+                    sort_delay_time: (data.sort_delay_time < 100 ? data.sort_delay_time * 1000 : data.sort_delay_time) ?? DEFAULT_ANIMATION_SETTINGS.sort_delay_time,
+                    sort_transition_speed: (data.sort_transition_speed < 100 ? data.sort_transition_speed * 1000 : data.sort_transition_speed) ?? DEFAULT_ANIMATION_SETTINGS.sort_transition_speed,
                     animation_style: data.animation_style || DEFAULT_ANIMATION_SETTINGS.animation_style,
                     label_font_size: data.label_font_size || DEFAULT_ANIMATION_SETTINGS.label_font_size,
-                    label_transition_speed: DEFAULT_ANIMATION_SETTINGS.label_transition_speed,
+                    label_transition_speed: 600, // Unify label animation duration for better visibility
                 };
                 setAnimationSettings(newSettings);
                 animationSettingsRef.current = newSettings;
@@ -521,30 +521,28 @@ export default function ResultsPage() {
                         className="fixed inset-0 z-[60] flex flex-col items-center justify-center pointer-events-none"
                     >
                         <motion.div
-                            key={animationSettings.animation_style} // Ensure re-render when style changes
-                            variants={
-                                animationSettings.animation_style === 'Fade'
-                                    ? {
-                                        initial: { opacity: 0 },
-                                        animate: { opacity: 1 },
-                                        exit: { opacity: 0 }
-                                    }
+                            key={revealingItem} // Use item name as key to trigger new animation for each item
+                            variants={{
+                                initial: animationSettings.animation_style === 'Fade'
+                                    ? { opacity: 0, scale: 0.9 }
                                     : animationSettings.animation_style === 'Slide'
-                                        ? {
-                                            initial: { opacity: 0, x: -100 },
-                                            animate: { opacity: 1, x: 0 },
-                                            exit: { opacity: 0, x: 100 }
-                                        }
-                                        : { // Default Pop-in
-                                            initial: { opacity: 0, scale: 0 },
-                                            animate: { opacity: 1, scale: [0, 1.25, 1], rotate: [0, -5, 0] },
-                                            exit: { opacity: 0, scale: 2, filter: 'blur(20px)' }
-                                        }
-                            }
+                                        ? { opacity: 0, x: -800, rotate: -10 }
+                                        : { opacity: 0, scale: 0, rotate: -20 }, // Pop-in
+                                animate: animationSettings.animation_style === 'Fade'
+                                    ? { opacity: 1, scale: 1 }
+                                    : animationSettings.animation_style === 'Slide'
+                                        ? { opacity: 1, x: 0, rotate: 0 }
+                                        : { opacity: 1, scale: [0, 1.3, 1], rotate: 0 }, // Pop-in
+                                exit: { opacity: 0, scale: 1.5, filter: 'blur(20px)', transition: { duration: 0.3 } }
+                            }}
                             initial="initial"
                             animate="animate"
                             exit="exit"
-                            transition={{ duration: animationSettings.label_transition_speed / 1000 }}
+                            transition={
+                                animationSettings.animation_style === 'Slide'
+                                    ? { type: 'spring', damping: 15, stiffness: 100 }
+                                    : { duration: 0.6, ease: 'easeOut' }
+                            }
                             className={`
                                 font-black tracking-tighter leading-none text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.8)] text-center px-4
                                 ${animationSettings.label_font_size}
