@@ -383,6 +383,9 @@ export default function ResultsPage() {
 
         // Listen to Broadcast from Admin Results Control
         const channel = supabase.channel('animation_control')
+            .on('broadcast', { event: 'show_label' }, (payload) => handleBroadcastEvent(payload))
+            .on('broadcast', { event: 'hide_label' }, (payload) => handleBroadcastEvent(payload))
+            .on('broadcast', { event: 'reveal_score' }, (payload) => handleBroadcastEvent(payload))
             .on('broadcast', { event: 'reveal_item' }, (payload) => handleBroadcastEvent(payload))
             .on('broadcast', { event: 'sort_ranks' }, (payload) => handleBroadcastEvent(payload))
             .on('broadcast', { event: 'reset' }, (payload) => handleBroadcastEvent(payload))

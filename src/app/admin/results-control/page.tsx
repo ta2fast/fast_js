@@ -61,18 +61,6 @@ export default function ResultsControlPage() {
         });
     };
 
-    const triggerQuickReveal = (itemId: string, itemName: string) => {
-        setUpdating(true);
-        supabase.channel('animation_control').send({
-            type: 'broadcast',
-            event: 'reveal_item',
-            payload: { itemId, itemName }
-        }).then(() => {
-            setRevealedIds(prev => [...new Set([...prev, itemId])]);
-            setTimeout(() => setUpdating(false), 8000); // Wait for long auto animation
-        });
-    };
-
     const triggerSortRanks = () => {
         setUpdating(true);
         supabase.channel('animation_control').send({
@@ -80,7 +68,7 @@ export default function ResultsControlPage() {
             event: 'sort_ranks',
             payload: {}
         }).then(() => {
-            setTimeout(() => setUpdating(false), 3000); // Wait for sort animation
+            setTimeout(() => setUpdating(false), 2000); // 演出時間を考慮
         });
     };
 
@@ -119,8 +107,8 @@ export default function ResultsControlPage() {
             <div className="max-w-4xl mx-auto">
                 <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold mb-2">📊 結果発表</h1>
-                        <p className="text-[var(--text-muted)]">リザルト画面での結果発表演出を制御します</p>
+                        <h1 className="text-3xl font-bold mb-2">📊 結果発表発表</h1>
+                        <p className="text-[var(--text-muted)]">リザルト画面での結果発表演出を手動で制御します</p>
                     </div>
                     <div className="flex gap-2">
                         <Link href="/admin/animation-settings" className="btn btn-outline btn-sm">
@@ -132,10 +120,10 @@ export default function ResultsControlPage() {
 
                 <div className="grid gap-6">
                     <section className="card">
-                        <div className="flex justify-between items-center mb-6">
+                        <div className="flex justify-between items-center mb-8">
                             <h2 className="text-xl font-bold flex items-center gap-2">
                                 <span className="w-2 h-6 bg-[var(--secondary)] rounded-full"></span>
-                                表示コントロール
+                                発表工程コントロール
                             </h2>
                             <div className="flex gap-2">
                                 <button
@@ -155,114 +143,128 @@ export default function ResultsControlPage() {
                             </div>
                         </div>
 
-                        <div className="grid gap-4 mb-8">
+                        <div className="grid gap-6 mb-8">
                             {evaluationItems.map((item) => {
                                 const isRevealed = revealedIds.includes(item.id);
                                 return (
-                                    <div key={item.id} className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-2 p-4 rounded-xl border-2 border-zinc-800 bg-zinc-900/50">
-                                        <div className="flex items-center gap-4">
+                                    <div key={item.id} className="p-5 rounded-2xl border-2 border-zinc-800 bg-zinc-900/50 shadow-inner">
+                                        <div className="flex items-center gap-4 mb-4">
                                             <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold bg-zinc-700 text-zinc-300">
                                                 {item.order}
                                             </div>
-                                            <span className="text-xl font-bold text-white">
-                                                『{item.name}』
+                                            <span className="text-xl font-black text-white tracking-tight">
+                                                『{item.name}』の発表
                                             </span>
                                         </div>
-                                        <div className="flex gap-2">
+                                        <div className="grid grid-cols-3 gap-3">
                                             <button
                                                 onClick={() => triggerShowLabel(item.name)}
                                                 disabled={updating}
-                                                className="btn btn-sm flex-1 md:flex-none bg-zinc-100 hover:bg-white text-black font-bold border-none"
+                                                className="btn py-4 flex flex-col gap-1 bg-zinc-100 hover:bg-white text-black font-bold border-none h-auto"
                                             >
-                                                1.項目名
+                                                <span className="text-xs opacity-60">STEP 1</span>
+                                                <span>項目表示</span>
                                             </button>
                                             <button
                                                 onClick={() => triggerRevealScore(item.id, item.name)}
                                                 disabled={updating}
-                                                className={`btn btn-sm flex-1 md:flex-none font-bold border-none ${isRevealed
-                                                    ? 'bg-zinc-700 text-zinc-400'
-                                                    : 'bg-[var(--secondary)] text-white shadow-md hover:brightness-110'
+                                                className={`btn py-4 flex flex-col gap-1 font-bold border-none h-auto transition-all ${isRevealed
+                                                    ? 'bg-zinc-800 text-zinc-500'
+                                                    : 'bg-[var(--secondary)] text-white shadow-lg hover:brightness-110 active:scale-95'
                                                     }`}
                                             >
-                                                {isRevealed ? '✅ 表示中' : '2.スコア'}
+                                                <span className="text-xs opacity-60">STEP 2</span>
+                                                <span>{isRevealed ? '✅ スコア表示済' : 'スコア表示'}</span>
                                             </button>
                                             <button
-                                                onClick={() => triggerQuickReveal(item.id, item.name)}
+                                                onClick={triggerSortRanks}
                                                 disabled={updating}
-                                                className="btn btn-sm border border-zinc-700 text-zinc-500 hover:text-zinc-300 hover:border-zinc-500"
-                                                title="項目名とスコアを自動で連続表示"
+                                                className="btn py-4 flex flex-col gap-1 bg-[var(--primary)] text-white font-bold border-none h-auto shadow-lg hover:brightness-110 active:scale-95"
                                             >
-                                                ⚡️
+                                                <span className="text-xs opacity-60">STEP 3</span>
+                                                <span>順位入れ替え</span>
                                             </button>
                                         </div>
                                     </div>
                                 );
                             })}
 
-                            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-2 p-4 rounded-xl border-2 border-zinc-800 bg-zinc-900/50">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold bg-zinc-700 text-zinc-300">
+                            <div className="p-5 rounded-2xl border-2 border-[#f87171]/30 bg-[#f87171]/5 shadow-inner">
+                                <div className="flex items-center gap-4 mb-4">
+                                    <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold bg-[#f87171] text-white">
                                         👥
                                     </div>
-                                    <span className="text-xl font-bold text-white">
-                                        『観客投票点』
+                                    <span className="text-xl font-black text-white tracking-tight">
+                                        『観客投票点』の発表
                                     </span>
                                 </div>
-                                <div className="flex gap-2">
+                                <div className="grid grid-cols-3 gap-3">
                                     <button
                                         onClick={() => triggerShowLabel('AUDIENCE SCORE')}
                                         disabled={updating}
-                                        className="btn btn-sm flex-1 md:flex-none bg-zinc-100 hover:bg-white text-black font-bold border-none"
+                                        className="btn py-4 flex flex-col gap-1 bg-zinc-100 hover:bg-white text-black font-bold border-none h-auto"
                                     >
-                                        1.項目名
+                                        <span className="text-xs opacity-60">STEP 1</span>
+                                        <span>項目表示</span>
                                     </button>
                                     <button
                                         onClick={() => triggerRevealScore('audience', '観客投票点')}
                                         disabled={updating}
-                                        className={`btn btn-sm flex-1 md:flex-none font-bold border-none ${revealedIds.includes('audience')
-                                            ? 'bg-zinc-700 text-zinc-400'
-                                            : 'bg-[#f87171] text-white shadow-md hover:brightness-110'
+                                        className={`btn py-4 flex flex-col gap-1 font-bold border-none h-auto transition-all ${revealedIds.includes('audience')
+                                            ? 'bg-zinc-800 text-zinc-500'
+                                            : 'bg-[#f87171] text-white shadow-lg hover:brightness-110 active:scale-95'
                                             }`}
                                     >
-                                        {revealedIds.includes('audience') ? '✅ 表示中' : '2.スコア'}
+                                        <span className="text-xs opacity-60">STEP 2</span>
+                                        <span>{revealedIds.includes('audience') ? '✅ スコア表示済' : 'スコア表示'}</span>
                                     </button>
                                     <button
-                                        onClick={() => triggerQuickReveal('audience', '観客投票点')}
+                                        onClick={triggerSortRanks}
                                         disabled={updating}
-                                        className="btn btn-sm border border-zinc-700 text-zinc-500 hover:text-zinc-300 hover:border-zinc-500"
-                                        title="項目名とスコアを自動で連続表示"
+                                        className="btn py-4 flex flex-col gap-1 bg-[var(--primary)] text-white font-bold border-none h-auto shadow-lg hover:brightness-110 active:scale-95"
                                     >
-                                        ⚡️
+                                        <span className="text-xs opacity-60">STEP 3</span>
+                                        <span>順位入れ替え</span>
                                     </button>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="border-t border-[var(--surface-border)] pt-8 mt-4">
-                            <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-[var(--primary)]">
-                                <span className="w-2 h-6 bg-[var(--primary)] rounded-full"></span>
-                                最終結果
+                        <div className="border-t border-[var(--surface-border)] pt-8 mt-4 text-center">
+                            <h2 className="text-xl font-bold mb-4 flex items-center justify-center gap-2 text-[var(--primary)]">
+                                <span className="w-8 h-[2px] bg-[var(--primary)] opacity-30"></span>
+                                発表終了
+                                <span className="w-8 h-[2px] bg-[var(--primary)] opacity-30"></span>
                             </h2>
+                            <p className="text-sm text-[var(--text-muted)] mb-6">全ての発表が完了したら、最後にリセットするか順位を確認してください</p>
                             <button
                                 onClick={triggerSortRanks}
                                 disabled={updating}
-                                className="w-full btn btn-primary py-6 text-2xl shadow-[0_0_20px_rgba(255,250,0,0.3)] hover:scale-[1.02] active:scale-95 transition-all outline-none border-2 border-[#fffa00]"
+                                className="w-full btn btn-primary py-8 text-3xl shadow-[0_0_30px_rgba(99,102,241,0.4)] hover:scale-[1.02] active:scale-95 transition-all outline-none border-t-2 border-l-2 border-white/20"
                             >
-                                🏆 順位入れ替え実行 🏆
+                                🏆 最終順位確定表示 🏆
                             </button>
                         </div>
                     </section>
 
-                    <aside className="p-4 bg-[var(--surface-light)] rounded-xl border border-[var(--surface-border)]">
-                        <h3 className="font-bold mb-2 flex items-center gap-2">
-                            <span className="text-amber-500">💡</span> 使い方
+                    <aside className="p-6 bg-zinc-900/80 rounded-2xl border border-zinc-700 shadow-xl">
+                        <h3 className="font-bold mb-4 flex items-center gap-2 text-amber-400">
+                            <span>💡</span> 正しい発表手順
                         </h3>
-                        <ul className="text-sm text-[var(--text-muted)] space-y-2 list-disc list-inside">
-                            <li><strong>手順1 (項目名):</strong> 各項目の「1.項目名」を押すと、リザルト画面に大きく項目名が表示されます。</li>
-                            <li><strong>手順2 (スコア):</strong> 「2.スコア」を押すと、その項目のバーが伸びて部分的に合計点が更新されます。</li>
-                            <li><strong>手順3 (全表示後):</strong> 全て発表後、一番下の「🏆 順位入れ替え実行 🏆」を押してください。</li>
-                            <li><strong>💡 ⚡️ボタン:</strong> 名前表示からスコア表示までを自動で行います（従来の方式）。</li>
-                        </ul>
+                        <div className="grid md:grid-cols-3 gap-6">
+                            <div className="bg-white/5 p-4 rounded-xl">
+                                <span className="text-xs font-bold text-amber-500 block mb-1">1. 項目を出す</span>
+                                <p className="text-sm text-zinc-300">「項目表示」を押して期待感を高めます</p>
+                            </div>
+                            <div className="bg-white/5 p-4 rounded-xl">
+                                <span className="text-xs font-bold text-amber-500 block mb-1">2. 点数を入れる</span>
+                                <p className="text-sm text-zinc-300">「スコア表示」でバーが伸び、合計点が増えます</p>
+                            </div>
+                            <div className="bg-white/5 p-4 rounded-xl">
+                                <span className="text-xs font-bold text-amber-500 block mb-1">3. 順位を入れ替える</span>
+                                <p className="text-sm text-zinc-300">「順位入れ替え」で、その時点の点数で並び替わります</p>
+                            </div>
+                        </div>
                     </aside>
                 </div>
             </div>
