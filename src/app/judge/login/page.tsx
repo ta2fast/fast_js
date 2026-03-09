@@ -175,7 +175,7 @@ export default function JudgeLoginPage() {
                                     autoFocus
                                     value={inputPassword}
                                     onChange={(e) => setInputPassword(e.target.value)}
-                                    className="w-full p-4 text-center text-2xl tracking-widest border-2 border-zinc-200 rounded-2xl mb-6 focus:border-[var(--primary)] focus:outline-none transition-colors bg-zinc-50 shadow-inner"
+                                    className="w-full p-4 text-center text-2xl tracking-widest border-2 border-zinc-200 rounded-2xl mb-6 focus:border-[var(--primary)] focus:outline-none transition-colors bg-zinc-50 shadow-inner text-zinc-900"
                                     placeholder="****"
                                 />
                                 <div className="flex gap-3">
