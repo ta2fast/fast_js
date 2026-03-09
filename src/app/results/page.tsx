@@ -442,7 +442,12 @@ export default function ResultsPage() {
                 currentDisplayedScore,
                 sortingScore
             };
-        }).sort((a, b) => b.sortingScore - a.sortingScore);
+        }).sort((a, b) => {
+            if (b.sortingScore !== a.sortingScore) {
+                return b.sortingScore - a.sortingScore;
+            }
+            return a.rider.displayOrder - b.rider.displayOrder;
+        });
     }, [displayResults, settings, barRevealedIds, displayedIds, sortingIds]);
 
     if (loading || !settings) {
