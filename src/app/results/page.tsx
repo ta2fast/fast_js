@@ -515,41 +515,38 @@ export default function ResultsPage() {
             </AnimatePresence>
 
             {/* Now Revealing Overlay */}
-            <AnimatePresence>
+            <AnimatePresence mode="wait">
                 {revealingItem && (
                     <motion.div
-                        className="fixed inset-0 z-[60] flex flex-col items-center justify-center pointer-events-none"
+                        key={revealingItem}
+                        variants={{
+                            initial: animationSettings.animation_style === 'Fade'
+                                ? { opacity: 0, scale: 0.9 }
+                                : animationSettings.animation_style === 'Slide'
+                                    ? { opacity: 0, x: -800, rotate: -10 }
+                                    : { opacity: 0, scale: 0, rotate: -20 },
+                            animate: animationSettings.animation_style === 'Fade'
+                                ? { opacity: 1, scale: 1 }
+                                : animationSettings.animation_style === 'Slide'
+                                    ? { opacity: 1, x: 0, rotate: 0 }
+                                    : { opacity: 1, scale: [0, 1.3, 1], rotate: 0 },
+                            exit: { opacity: 0, scale: 1.5, filter: 'blur(20px)', transition: { duration: 0.3 } }
+                        }}
+                        initial="initial"
+                        animate="animate"
+                        exit="exit"
+                        transition={
+                            animationSettings.animation_style === 'Slide'
+                                ? { type: 'spring', damping: 15, stiffness: 100 }
+                                : { duration: 0.6, ease: 'easeOut' }
+                        }
+                        className={`
+                            fixed inset-0 z-[60] flex items-center justify-center pointer-events-none
+                            font-black tracking-tighter leading-none text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.8)] text-center px-4
+                            ${animationSettings.label_font_size}
+                        `}
                     >
-                        <motion.div
-                            key={revealingItem} // Use item name as key to trigger new animation for each item
-                            variants={{
-                                initial: animationSettings.animation_style === 'Fade'
-                                    ? { opacity: 0, scale: 0.9 }
-                                    : animationSettings.animation_style === 'Slide'
-                                        ? { opacity: 0, x: -800, rotate: -10 }
-                                        : { opacity: 0, scale: 0, rotate: -20 }, // Pop-in
-                                animate: animationSettings.animation_style === 'Fade'
-                                    ? { opacity: 1, scale: 1 }
-                                    : animationSettings.animation_style === 'Slide'
-                                        ? { opacity: 1, x: 0, rotate: 0 }
-                                        : { opacity: 1, scale: [0, 1.3, 1], rotate: 0 }, // Pop-in
-                                exit: { opacity: 0, scale: 1.5, filter: 'blur(20px)', transition: { duration: 0.3 } }
-                            }}
-                            initial="initial"
-                            animate="animate"
-                            exit="exit"
-                            transition={
-                                animationSettings.animation_style === 'Slide'
-                                    ? { type: 'spring', damping: 15, stiffness: 100 }
-                                    : { duration: 0.6, ease: 'easeOut' }
-                            }
-                            className={`
-                                font-black tracking-tighter leading-none text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.8)] text-center px-4
-                                ${animationSettings.label_font_size}
-                            `}
-                        >
-                            {revealingItem}
-                        </motion.div>
+                        {revealingItem}
                     </motion.div>
                 )}
             </AnimatePresence>

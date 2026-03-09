@@ -1,19 +1,36 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { ContestSettings } from '@/types';
 import { supabase } from '@/lib/supabase';
 import { getSettings } from '@/lib/store';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 export default function ResultsControlPage() {
     const [settings, setSettings] = useState<ContestSettings | null>(null);
     const [loading, setLoading] = useState(true);
     const [updating, setUpdating] = useState(false);
     const [revealedIds, setRevealedIds] = useState<string[]>([]);
+    const channelRef = useRef<RealtimeChannel | null>(null);
 
     useEffect(() => {
         fetchSettings();
+
+        // Subscribe to the broadcast channel FIRST — required before sending
+        const ch = supabase.channel('animation_control');
+        ch.subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+                console.log('[Admin] Subscribed to animation_control channel');
+            }
+        });
+        channelRef.current = ch;
+
+        return () => {
+            if (channelRef.current) {
+                supabase.removeChannel(channelRef.current);
+            }
+        };
     }, []);
 
     const fetchSettings = async () => {
@@ -27,64 +44,46 @@ export default function ResultsControlPage() {
         }
     };
 
-    const triggerShowLabel = (itemName: string) => {
+    const sendBroadcast = useCallback((event: string, payload: Record<string, any> = {}) => {
+        const ch = channelRef.current;
+        if (!ch) {
+            console.error('[Admin] Channel not ready');
+            return;
+        }
         setUpdating(true);
-        supabase.channel('animation_control').send({
+        ch.send({
             type: 'broadcast',
-            event: 'show_label',
-            payload: { itemName }
+            event,
+            payload
         }).then(() => {
-            setTimeout(() => setUpdating(false), 300);
+            const delay = event === 'sort_ranks' ? 2000 : 300;
+            setTimeout(() => setUpdating(false), delay);
         });
+    }, []);
+
+    const triggerShowLabel = (itemName: string) => {
+        sendBroadcast('show_label', { itemName });
     };
 
     const triggerHideLabel = () => {
-        setUpdating(true);
-        supabase.channel('animation_control').send({
-            type: 'broadcast',
-            event: 'hide_label',
-            payload: {}
-        }).then(() => {
-            setTimeout(() => setUpdating(false), 300);
-        });
+        sendBroadcast('hide_label');
     };
 
     const triggerRevealScore = (itemId: string, itemName: string) => {
-        setUpdating(true);
-        supabase.channel('animation_control').send({
-            type: 'broadcast',
-            event: 'reveal_score',
-            payload: { itemId, itemName }
-        }).then(() => {
-            setRevealedIds(prev => [...new Set([...prev, itemId])]);
-            setTimeout(() => setUpdating(false), 300);
-        });
+        sendBroadcast('reveal_score', { itemId, itemName });
+        setRevealedIds(prev => [...new Set([...prev, itemId])]);
     };
 
     const triggerSortRanks = () => {
-        setUpdating(true);
-        supabase.channel('animation_control').send({
-            type: 'broadcast',
-            event: 'sort_ranks',
-            payload: {}
-        }).then(() => {
-            setTimeout(() => setUpdating(false), 2000); // 演出時間を考慮
-        });
+        sendBroadcast('sort_ranks');
     };
 
     const triggerReset = () => {
         if (!window.confirm('本当にすべての結果表示をリセットしてよろしいですか？\n※リザルト画面のバーがすべて0に戻ります。')) {
             return;
         }
-        setUpdating(true);
-        supabase.channel('animation_control').send({
-            type: 'broadcast',
-            event: 'reset',
-            payload: {}
-        }).then(() => {
-            setRevealedIds([]);
-            setTimeout(() => setUpdating(false), 300);
-        });
+        sendBroadcast('reset');
+        setRevealedIds([]);
     };
 
 
