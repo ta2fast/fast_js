@@ -610,7 +610,7 @@ export default function ResultsPage() {
                             </div>
 
                             {/* Stacked Bar Container */}
-                            <div className="flex-1 bg-black h-[50%] md:h-16 relative overflow-hidden flex ring-4 ring-zinc-800 shadow-[0_0_30px_rgba(0,0,0,0.8)]">
+                            <div className="flex-1 bg-black h-[50%] md:h-16 relative overflow-hidden flex shadow-[0_0_30px_rgba(0,0,0,0.8)]">
                                 {res.allItems.map((item) => (
                                     <motion.div
                                         key={item.id}
