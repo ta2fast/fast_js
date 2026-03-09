@@ -27,16 +27,49 @@ export default function ResultsControlPage() {
         }
     };
 
-    const triggerRevealItem = (itemId: string, itemName: string) => {
+    const triggerShowLabel = (itemName: string) => {
         setUpdating(true);
-        // Payload 送信
+        supabase.channel('animation_control').send({
+            type: 'broadcast',
+            event: 'show_label',
+            payload: { itemName }
+        }).then(() => {
+            setTimeout(() => setUpdating(false), 300);
+        });
+    };
+
+    const triggerHideLabel = () => {
+        setUpdating(true);
+        supabase.channel('animation_control').send({
+            type: 'broadcast',
+            event: 'hide_label',
+            payload: {}
+        }).then(() => {
+            setTimeout(() => setUpdating(false), 300);
+        });
+    };
+
+    const triggerRevealScore = (itemId: string, itemName: string) => {
+        setUpdating(true);
+        supabase.channel('animation_control').send({
+            type: 'broadcast',
+            event: 'reveal_score',
+            payload: { itemId, itemName }
+        }).then(() => {
+            setRevealedIds(prev => [...new Set([...prev, itemId])]);
+            setTimeout(() => setUpdating(false), 300);
+        });
+    };
+
+    const triggerQuickReveal = (itemId: string, itemName: string) => {
+        setUpdating(true);
         supabase.channel('animation_control').send({
             type: 'broadcast',
             event: 'reveal_item',
             payload: { itemId, itemName }
         }).then(() => {
             setRevealedIds(prev => [...new Set([...prev, itemId])]);
-            setTimeout(() => setUpdating(false), 300);
+            setTimeout(() => setUpdating(false), 8000); // Wait for long auto animation
         });
     };
 
@@ -47,7 +80,7 @@ export default function ResultsControlPage() {
             event: 'sort_ranks',
             payload: {}
         }).then(() => {
-            setTimeout(() => setUpdating(false), 300);
+            setTimeout(() => setUpdating(false), 3000); // Wait for sort animation
         });
     };
 
@@ -99,64 +132,110 @@ export default function ResultsControlPage() {
 
                 <div className="grid gap-6">
                     <section className="card">
-                        <h2 className="text-xl font-bold mb-6 flex items-center justify-between">
-                            <div className="flex items-center gap-2">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold flex items-center gap-2">
                                 <span className="w-2 h-6 bg-[var(--secondary)] rounded-full"></span>
                                 表示コントロール
+                            </h2>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={triggerHideLabel}
+                                    disabled={updating}
+                                    className="btn btn-sm bg-zinc-700 hover:bg-zinc-600 text-white border-none shadow-sm"
+                                >
+                                    文字を消す
+                                </button>
+                                <button
+                                    onClick={triggerReset}
+                                    disabled={updating}
+                                    className="btn btn-sm bg-red-600 hover:bg-red-700 text-white border-none shadow-sm"
+                                >
+                                    🔄 オールクリア
+                                </button>
                             </div>
-                            <button
-                                onClick={triggerReset}
-                                disabled={updating}
-                                className="btn btn-sm bg-red-600 hover:bg-red-700 text-white border-none shadow-sm"
-                            >
-                                🔄 オールクリア
-                            </button>
-                        </h2>
+                        </div>
 
-                        <div className="grid gap-3 mb-8">
+                        <div className="grid gap-4 mb-8">
                             {evaluationItems.map((item) => {
                                 const isRevealed = revealedIds.includes(item.id);
                                 return (
-                                    <button
-                                        key={item.id}
-                                        onClick={() => triggerRevealItem(item.id, item.name)}
-                                        disabled={updating}
-                                        className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all text-left ${isRevealed
-                                            ? 'border-zinc-700 bg-zinc-800 text-zinc-300 shadow-none'
-                                            : 'border-[var(--secondary)] bg-[var(--secondary)] text-white shadow-md hover:brightness-110 active:scale-95'
-                                            }`}
-                                    >
+                                    <div key={item.id} className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-2 p-4 rounded-xl border-2 border-zinc-800 bg-zinc-900/50">
                                         <div className="flex items-center gap-4">
-                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${isRevealed ? 'bg-zinc-700 text-zinc-400' : 'bg-white text-[var(--secondary)]'
-                                                }`}>
+                                            <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold bg-zinc-700 text-zinc-300">
                                                 {item.order}
                                             </div>
-                                            <span className="text-xl font-bold">
-                                                {isRevealed ? `✅ 『${item.name}』 (発表済み)` : `『${item.name}』をアニメーション発表`}
+                                            <span className="text-xl font-bold text-white">
+                                                『{item.name}』
                                             </span>
                                         </div>
-                                    </button>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => triggerShowLabel(item.name)}
+                                                disabled={updating}
+                                                className="btn btn-sm flex-1 md:flex-none bg-zinc-100 hover:bg-white text-black font-bold border-none"
+                                            >
+                                                1.項目名
+                                            </button>
+                                            <button
+                                                onClick={() => triggerRevealScore(item.id, item.name)}
+                                                disabled={updating}
+                                                className={`btn btn-sm flex-1 md:flex-none font-bold border-none ${isRevealed
+                                                    ? 'bg-zinc-700 text-zinc-400'
+                                                    : 'bg-[var(--secondary)] text-white shadow-md hover:brightness-110'
+                                                    }`}
+                                            >
+                                                {isRevealed ? '✅ 表示中' : '2.スコア'}
+                                            </button>
+                                            <button
+                                                onClick={() => triggerQuickReveal(item.id, item.name)}
+                                                disabled={updating}
+                                                className="btn btn-sm border border-zinc-700 text-zinc-500 hover:text-zinc-300 hover:border-zinc-500"
+                                                title="項目名とスコアを自動で連続表示"
+                                            >
+                                                ⚡️
+                                            </button>
+                                        </div>
+                                    </div>
                                 );
                             })}
 
-                            <button
-                                onClick={() => triggerRevealItem('audience', '観客投票点')}
-                                disabled={updating}
-                                className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all text-left ${revealedIds.includes('audience')
-                                    ? 'border-zinc-700 bg-zinc-800 text-zinc-300 shadow-none'
-                                    : 'border-[#f87171] bg-[#f87171] text-white shadow-md hover:brightness-110 active:scale-95'
-                                    }`}
-                            >
+                            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-2 p-4 rounded-xl border-2 border-zinc-800 bg-zinc-900/50">
                                 <div className="flex items-center gap-4">
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${revealedIds.includes('audience') ? 'bg-zinc-700 text-zinc-400' : 'bg-white text-[#f87171]'
-                                        }`}>
+                                    <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold bg-zinc-700 text-zinc-300">
                                         👥
                                     </div>
-                                    <span className={`text-xl font-bold`}>
-                                        {revealedIds.includes('audience') ? '✅ 『観客投票点』 (発表済み)' : '『観客投票点』をアニメーション発表'}
+                                    <span className="text-xl font-bold text-white">
+                                        『観客投票点』
                                     </span>
                                 </div>
-                            </button>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => triggerShowLabel('AUDIENCE SCORE')}
+                                        disabled={updating}
+                                        className="btn btn-sm flex-1 md:flex-none bg-zinc-100 hover:bg-white text-black font-bold border-none"
+                                    >
+                                        1.項目名
+                                    </button>
+                                    <button
+                                        onClick={() => triggerRevealScore('audience', '観客投票点')}
+                                        disabled={updating}
+                                        className={`btn btn-sm flex-1 md:flex-none font-bold border-none ${revealedIds.includes('audience')
+                                            ? 'bg-zinc-700 text-zinc-400'
+                                            : 'bg-[#f87171] text-white shadow-md hover:brightness-110'
+                                            }`}
+                                    >
+                                        {revealedIds.includes('audience') ? '✅ 表示中' : '2.スコア'}
+                                    </button>
+                                    <button
+                                        onClick={() => triggerQuickReveal('audience', '観客投票点')}
+                                        disabled={updating}
+                                        className="btn btn-sm border border-zinc-700 text-zinc-500 hover:text-zinc-300 hover:border-zinc-500"
+                                        title="項目名とスコアを自動で連続表示"
+                                    >
+                                        ⚡️
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
                         <div className="border-t border-[var(--surface-border)] pt-8 mt-4">
@@ -179,10 +258,10 @@ export default function ResultsControlPage() {
                             <span className="text-amber-500">💡</span> 使い方
                         </h3>
                         <ul className="text-sm text-[var(--text-muted)] space-y-2 list-disc list-inside">
-                            <li><strong>手順1:</strong> スコア入力画面で先に全点数を入力してください。</li>
-                            <li><strong>手順2:</strong> リザルト画面には最初「0点」の状態で順位が表示されています。</li>
-                            <li><strong>手順3:</strong> 上のボタンを押すと、その項目だけのバーが伸びて部分的に合計点が更新されます。</li>
-                            <li><strong>手順4:</strong> この段階では順位は入れ替わりません。全て発表後、「最終順位の入れ替えを実行」ボタンを押してください。</li>
+                            <li><strong>手順1 (項目名):</strong> 各項目の「1.項目名」を押すと、リザルト画面に大きく項目名が表示されます。</li>
+                            <li><strong>手順2 (スコア):</strong> 「2.スコア」を押すと、その項目のバーが伸びて部分的に合計点が更新されます。</li>
+                            <li><strong>手順3 (全表示後):</strong> 全て発表後、一番下の「🏆 順位入れ替え実行 🏆」を押してください。</li>
+                            <li><strong>💡 ⚡️ボタン:</strong> 名前表示からスコア表示までを自動で行います（従来の方式）。</li>
                         </ul>
                     </aside>
                 </div>

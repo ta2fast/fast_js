@@ -307,45 +307,54 @@ export default function ResultsPage() {
             const sortDelayMs = animationSettingsRef.current.sort_delay_time;
             const sortDurationMs = animationSettingsRef.current.sort_transition_speed;
 
-            if (eventType === 'reveal_item') {
-                const { itemId, itemName } = data;
+            if (eventType === 'show_label') {
+                const { itemName } = data;
                 playRevealSound();
-
-                console.log(`[Animation] Revealing: ${itemName}`);
+                console.log(`[Animation] Showing Label: ${itemName}`);
                 setActiveHighlightItem(itemName);
                 setRevealingItem(itemName);
-                await wait(labelMs);
-
+            }
+            else if (eventType === 'hide_label') {
+                console.log(`[Animation] Hiding Label`);
                 setRevealingItem(null);
-                await wait(500); // small pause after label disappears
+            }
+            else if (eventType === 'reveal_score') {
+                const { itemId, itemName } = data;
+                console.log(`[Animation] Revealing Score: ${itemName}`);
+                setRevealingItem(null); // Ensure label is hidden
 
-                // Extend only this specific bar and update score
                 const newRevealedIds = [...new Set([...barRevealedIds, itemId])];
                 setBarRevealedIds(newRevealedIds);
                 setDisplayedIds(newRevealedIds);
 
                 await wait(barMs);
+            }
+            else if (eventType === 'reveal_item') {
+                // Keep for legacy, but simplified (no auto-sort)
+                const { itemId, itemName } = data;
+                playRevealSound();
 
-                // --- 自動順位入れ替え (Auto Sort) ---
-                console.log(`[Animation] Auto-Sort Wait (${sortDelayMs}ms)`);
-                await wait(sortDelayMs);
+                console.log(`[Animation] Quick Revealing: ${itemName}`);
+                setActiveHighlightItem(itemName);
+                setRevealingItem(itemName);
+                await wait(labelMs);
 
-                // 順位確定前に最新の合計点を再取得・計算させる
-                await fetchDataSilent();
+                setRevealingItem(null);
+                await wait(500);
 
-                console.log(`[Animation] Auto-Sorting Ranks (${sortDurationMs}ms)`);
-                setAnimationSortDuration(sortDurationMs / 1000);
-                setSortingIds(newRevealedIds);
-                await wait(sortDurationMs);
+                const newRevealedIds = [...new Set([...barRevealedIds, itemId])];
+                setBarRevealedIds(newRevealedIds);
+                setDisplayedIds(newRevealedIds);
 
-                setActiveHighlightItem(null);
+                await wait(barMs);
             }
             else if (eventType === 'sort_ranks') {
-                console.log(`[Animation] Sorting Ranks`);
+                console.log(`[Animation] Manual Sorting Ranks`);
+                await fetchDataSilent(); // Sync latest scores before sort
                 setAnimationSortDuration(sortDurationMs / 1000);
-                // Copy displayedIds to sortingIds to trigger reorder
-                setSortingIds(prev => [...new Set([...barRevealedIds])]);
+                setSortingIds([...barRevealedIds]);
                 await wait(sortDurationMs);
+                setActiveHighlightItem(null);
             }
             else if (eventType === 'reset') {
                 console.log(`[Animation] Resetting display`);
