@@ -86,8 +86,8 @@ export default function ResultsControlPage() {
             <div className="max-w-4xl mx-auto">
                 <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold mb-2">📊 リザルト表示コントロール</h1>
-                        <p className="text-[var(--text-muted)]">リザルト画面での項目表示を制御します</p>
+                        <h1 className="text-3xl font-bold mb-2">📊 結果発表</h1>
+                        <p className="text-[var(--text-muted)]">リザルト画面での結果発表演出を制御します</p>
                     </div>
                     <div className="flex gap-2">
                         <Link href="/admin/animation-settings" className="btn btn-outline btn-sm">

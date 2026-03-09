@@ -152,7 +152,7 @@ export default function AdminPage() {
                         href="/admin/results-control"
                         className="btn btn-primary btn-sm flex items-center gap-2 h-10 px-6 shadow-lg hover:scale-105 transition-transform"
                     >
-                        📊 リザルト演出設定
+                        📊 結果発表
                     </Link>
                 </div>
 
