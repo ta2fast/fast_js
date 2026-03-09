@@ -395,7 +395,7 @@ export default function ResultsPage() {
             .filter(item => item.enabled)
             .sort((a, b) => a.order - b.order);
 
-        return displayResults.map(res => {
+        const items = displayResults.map(res => {
             // Calculate breakdown based on judge scores
             const itemBreakdown = enabledItems.map((item, index) => {
                 const itemScoresAcrossJudges = res.judgeScores.map(js => {
@@ -442,11 +442,25 @@ export default function ResultsPage() {
                 currentDisplayedScore,
                 sortingScore
             };
-        }).sort((a, b) => {
+        });
+
+        const sorted = items.sort((a, b) => {
             if (b.sortingScore !== a.sortingScore) {
                 return b.sortingScore - a.sortingScore;
             }
             return a.rider.displayOrder - b.rider.displayOrder;
+        });
+
+        // Calculate ranks with ties
+        let currentRank = 1;
+        return sorted.map((res, index) => {
+            if (index > 0 && res.sortingScore < sorted[index - 1].sortingScore) {
+                currentRank = index + 1;
+            }
+            return {
+                ...res,
+                calculatedRank: currentRank
+            };
         });
     }, [displayResults, settings, barRevealedIds, displayedIds, sortingIds]);
 
@@ -574,24 +588,24 @@ export default function ResultsPage() {
                                 layout: { type: 'tween', ease: 'easeInOut', duration: animationSortDuration },
                                 opacity: { duration: 0.3 }
                             }}
-                            className={`relative flex items-center gap-4 ${index < 3 ? 'flex-[1.3] py-2 md:py-3' : 'flex-1 py-1 md:py-2'} min-h-0 bg-zinc-900/40 rounded-lg pr-4 border-l-[12px] ${index < 3 ? 'shadow-[0_0_20px_rgba(255,250,0,0.2)]' : ''}`}
+                            className={`relative flex items-center gap-4 ${res.calculatedRank <= 3 ? 'flex-[1.3] py-2 md:py-3' : 'flex-1 py-1 md:py-2'} min-h-0 bg-zinc-900/40 rounded-lg pr-4 border-l-[12px] ${res.calculatedRank <= 3 ? 'shadow-[0_0_20px_rgba(255,250,0,0.2)]' : ''}`}
                             style={{
-                                borderLeftColor: index === 0 ? '#fffa00' : index === 1 ? '#e2e8f0' : index === 2 ? '#b45309' : '#333'
+                                borderLeftColor: res.calculatedRank === 1 ? '#fffa00' : res.calculatedRank === 2 ? '#e2e8f0' : res.calculatedRank === 3 ? '#b45309' : '#333'
                             }}
                         >
                             {/* Rank & Name */}
                             <div className="w-[160px] md:w-[300px] flex items-center gap-3 shrink-0 pl-4">
                                 <motion.div
-                                    className={`${index < 3 ? 'text-4xl md:text-6xl w-14 md:w-24' : 'text-3xl md:text-4xl w-10 md:w-16'} font-bold shrink-0 ${index === 0 ? 'text-[#fffa00] drop-shadow-[0_0_10px_rgba(255,250,0,0.8)]' :
-                                        index === 1 ? 'text-[#e2e8f0] drop-shadow-[0_0_10px_rgba(226,232,240,0.8)]' :
-                                            index === 2 ? 'text-[#b45309] drop-shadow-[0_0_10px_rgba(180,83,9,0.8)]' :
+                                    className={`${res.calculatedRank <= 3 ? 'text-4xl md:text-6xl w-14 md:w-24' : 'text-3xl md:text-4xl w-10 md:w-16'} font-bold shrink-0 ${res.calculatedRank === 1 ? 'text-[#fffa00] drop-shadow-[0_0_10px_rgba(255,250,0,0.8)]' :
+                                        res.calculatedRank === 2 ? 'text-[#e2e8f0] drop-shadow-[0_0_10px_rgba(226,232,240,0.8)]' :
+                                            res.calculatedRank === 3 ? 'text-[#b45309] drop-shadow-[0_0_10px_rgba(180,83,9,0.8)]' :
                                                 'text-zinc-600'
                                         }`}
                                 >
-                                    {index + 1}
+                                    {res.calculatedRank}
                                 </motion.div>
                                 <div className="flex flex-col min-w-0">
-                                    <span className={`${index < 3 ? 'text-xl md:text-3xl' : 'text-lg md:text-xl'} text-white truncate font-black tracking-tight leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]`}>{res.rider.riderName}</span>
+                                    <span className={`${res.calculatedRank <= 3 ? 'text-xl md:text-3xl' : 'text-lg md:text-xl'} text-white truncate font-black tracking-tight leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]`}>{res.rider.riderName}</span>
                                 </div>
                             </div>
 
@@ -630,7 +644,7 @@ export default function ResultsPage() {
                             </div>
 
                             <div className="w-24 md:w-40 text-right shrink-0">
-                                <div className={`${index < 3 ? 'text-3xl md:text-5xl' : 'text-2xl md:text-4xl'} font-bold tracking-tight text-[#fffa00] drop-shadow-[0_0_10px_rgba(255,250,0,0.5)]`}>
+                                <div className={`${res.calculatedRank <= 3 ? 'text-3xl md:text-5xl' : 'text-2xl md:text-4xl'} font-bold tracking-tight text-[#fffa00] drop-shadow-[0_0_10px_rgba(255,250,0,0.5)]`}>
                                     <AnimatedCounter
                                         value={res.currentDisplayedScore}
                                         duration={animationSettingsRef.current.bar_transition_speed}
