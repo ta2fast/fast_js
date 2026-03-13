@@ -2,29 +2,39 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { RiderResult } from '@/types';
+import { RiderResult, ContestSettings } from '@/types';
 
 export default function StandingsPage() {
   const [results, setResults] = useState<RiderResult[]>([]);
+  const [settings, setSettings] = useState<ContestSettings | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchScores = async () => {
+    const fetchData = async () => {
       try {
-        const res = await fetch('/api/scores', { cache: 'no-store' });
-        const data = await res.json();
-        if (data.success) {
-          setResults(data.data);
+        const [scoresRes, settingsRes] = await Promise.all([
+          fetch('/api/scores', { cache: 'no-store' }),
+          fetch('/api/admin/settings', { cache: 'no-store' })
+        ]);
+
+        const scoresData = await scoresRes.json();
+        const settingsData = await settingsRes.json();
+
+        if (scoresData.success) {
+          setResults(scoresData.data);
+        }
+        if (settingsData.success) {
+          setSettings(settingsData.data);
         }
       } catch (error) {
-        console.error('Failed to fetch scores:', error);
+        console.error('Failed to fetch data:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchScores();
-    const interval = setInterval(fetchScores, 5000);
+    fetchData();
+    const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -41,7 +51,17 @@ export default function StandingsPage() {
       <div className="max-w-4xl mx-auto">
         <header className="mb-8 text-center">
           <h1 className="text-3xl font-bold mb-2">🏆 大会結果・順位</h1>
-          <p className="text-[var(--text-muted)]">リアルタイム順位（5秒更新）</p>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <p className="text-[var(--text-muted)]">リアルタイム順位（5秒更新）</p>
+            {settings && (
+              <span className={`text-xs font-bold px-2 py-0.5 rounded border ${settings.currentTry === 1
+                  ? 'bg-blue-600/20 text-blue-400 border-blue-600/30'
+                  : 'bg-emerald-600/20 text-emerald-400 border-emerald-600/30'
+                }`}>
+                {settings.currentTry === 1 ? '1st Try' : '2nd Try'}
+              </span>
+            )}
+          </div>
         </header>
 
         <div className="grid gap-4">

@@ -163,7 +163,17 @@ export default function AudiencePage() {
     // ---- UI Parts ----
     const Header = () => (
         <header className="flex justify-between items-center mb-10 w-full max-w-md">
-            <h1 className="text-xl font-black tracking-tighter">FastJudge</h1>
+            <div className="flex flex-col">
+                <h1 className="text-xl font-black tracking-tighter">FastJudge</h1>
+                {settings && (
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded mt-1 w-fit border ${settings.currentTry === 1
+                            ? 'bg-blue-600/20 text-blue-400 border-blue-600/30'
+                            : 'bg-emerald-600/20 text-emerald-400 border-emerald-600/30'
+                        }`}>
+                        {settings.currentTry === 1 ? '1st Try' : '2nd Try'}
+                    </span>
+                )}
+            </div>
             <button
                 type="button"
                 onClick={() => window.location.reload()}
