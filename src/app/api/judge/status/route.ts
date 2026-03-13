@@ -33,8 +33,9 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
             );
         }
 
-        const { getJudgeScore } = await import('@/lib/store');
-        const scoreData = await getJudgeScore(judgeId, riderId);
+        const { getJudgeScore, getSettings } = await import('@/lib/store');
+        const settings = await getSettings();
+        const scoreData = await getJudgeScore(judgeId, riderId, settings.currentTry);
 
         return NextResponse.json({
             success: true,

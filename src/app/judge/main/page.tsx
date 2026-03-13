@@ -194,6 +194,7 @@ export default function JudgeMainPage() {
                             ))}
                         </div>
                     </section>
+                </main>
             </div>
         </div>
     );
