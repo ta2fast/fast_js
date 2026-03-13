@@ -95,6 +95,32 @@ export default function AdminPage() {
         }
     }
 
+    async function updateTry(tryNumber: number) {
+        if (!settings || toggling) return;
+        setToggling(true);
+        try {
+            const res = await fetch('/api/admin/settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    currentTry: tryNumber,
+                }),
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                setSettings(data.data);
+            } else {
+                alert(`試技の切り替えに失敗しました: ${data.error}`);
+            }
+        } catch (error) {
+            console.error('Failed to update try:', error);
+            alert('通信エラーが発生しました');
+        } finally {
+            setToggling(false);
+        }
+    }
+
     const getRankClass = (rank: number) => {
         switch (rank) {
             case 1: return 'rank-1';
@@ -107,7 +133,7 @@ export default function AdminPage() {
     const handleResetScores = async () => {
         if (!confirm('【警告】すべてのジャッジ点、観客投票、および現在の選手選択をリセットします。本当によろしいですか？\n※ログ（履歴）は削除されません。')) return;
 
-        setLoading(true); // Reuse loading state for simplicity or add a new one
+        setLoading(true);
         try {
             const res = await fetch('/api/admin/reset-scores', { method: 'POST' });
             const data = await res.json();
@@ -156,6 +182,30 @@ export default function AdminPage() {
                     </Link>
                 </div>
 
+                {/* TRY SELECTOR */}
+                <div className="flex bg-[var(--surface-light)] p-1 rounded-xl border border-[var(--surface-border)] mb-6 w-fit h-12">
+                    <button
+                        onClick={() => updateTry(1)}
+                        disabled={toggling || settings?.votingEnabled}
+                        className={`px-6 h-full rounded-lg font-bold transition-all ${settings?.currentTry === 1
+                            ? 'bg-blue-600 text-white shadow-lg'
+                            : 'text-[var(--text-muted)] hover:text-[var(--text-base)]'
+                            } ${settings?.votingEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                        1st Try
+                    </button>
+                    <button
+                        onClick={() => updateTry(2)}
+                        disabled={toggling || settings?.votingEnabled}
+                        className={`px-6 h-full rounded-lg font-bold transition-all ${settings?.currentTry === 2
+                            ? 'bg-emerald-600 text-white shadow-lg'
+                            : 'text-[var(--text-muted)] hover:text-[var(--text-base)]'
+                            } ${settings?.votingEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                        2nd Try
+                    </button>
+                </div>
+
                 <div className="bg-[var(--surface-light)] rounded-2xl p-6 mb-8 shadow-inner">
                     {currentRider ? (
                         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
@@ -202,11 +252,11 @@ export default function AdminPage() {
                         <button
                             key={rider.id}
                             onClick={() => selectCurrentRider(rider.id)}
-                            disabled={selectingRider || rider.id === settings?.currentRiderId || settings?.votingEnabled}
                             className={`p-4 rounded-xl text-left transition-all border-2 ${rider.id === settings?.currentRiderId
                                 ? 'bg-[var(--primary)] border-[var(--primary)] text-white shadow-md'
                                 : 'bg-[var(--surface)] border-transparent hover:border-[var(--surface-border)] hover:bg-[var(--surface-light)]'
-                                } ${settings?.votingEnabled && rider.id !== settings?.currentRiderId ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
+                                } ${settings?.votingEnabled && rider.id !== settings?.currentRiderId ? 'opacity-50 grayscale cursor-not-allowed' : ''} ${selectingRider ? 'cursor-wait' : ''}`}
+                            disabled={selectingRider || (settings?.votingEnabled && rider.id !== settings?.currentRiderId)}
                         >
                             <div className="flex items-center gap-2 mb-1">
                                 <span className="w-5 h-5 rounded-md bg-white/20 flex items-center justify-center text-[10px] font-bold">
