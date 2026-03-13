@@ -36,9 +36,10 @@ const DEFAULT_ANIMATION_SETTINGS = {
 // Count-up component for the total score
 function AnimatedCounter({ value, duration = 3000 }: { value: number; duration?: number }) {
     const [displayValue, setDisplayValue] = useState(0);
+    const prevValue = useRef(0);
 
     useEffect(() => {
-        let start = displayValue;
+        let start = prevValue.current;
         const end = value;
         if (start === end) return;
 
@@ -56,6 +57,7 @@ function AnimatedCounter({ value, duration = 3000 }: { value: number; duration?:
                 requestAnimationFrame(update);
             } else {
                 setDisplayValue(end);
+                prevValue.current = end;
             }
         };
         requestAnimationFrame(update);
@@ -78,7 +80,6 @@ export default function ResultsPage() {
     const [announcedRiderIds, setAnnouncedRiderIds] = useState<string[]>([]);
     const [animationSortDuration, setAnimationSortDuration] = useState(0.8);
     const [animationSettings, setAnimationSettings] = useState(DEFAULT_ANIMATION_SETTINGS);
-    const [isFullscreen, setIsFullscreen] = useState(false);
 
     const latestResultsRef = useRef<RiderResult[]>([]);
     const animationSettingsRef = useRef(DEFAULT_ANIMATION_SETTINGS);
@@ -115,34 +116,12 @@ export default function ResultsPage() {
         } catch (e) { }
     };
 
-    const toggleFullscreen = () => {
-        const doc = document as any;
-        const elem = document.documentElement as any;
-        if (!doc.fullscreenElement) {
-            if (elem.requestFullscreen) elem.requestFullscreen();
-        } else {
-            if (doc.exitFullscreen) doc.exitFullscreen();
-        }
-    };
-
     const enableAudio = () => {
         const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
         const ctx = new AudioContextClass();
         audioContextRef.current = ctx;
         ctx.resume().then(() => setAudioEnabled(true));
     };
-
-    const fetchContestSettings = useCallback(async () => {
-        const { data } = await supabase.from('contest_settings').select('*').eq('id', 'default').single();
-        if (data) {
-            setSettings({
-                ...DEFAULT_CONTEST_SETTINGS,
-                ...data,
-                evaluationItems: data.evaluation_items || DEFAULT_CONTEST_SETTINGS.evaluationItems,
-                announcedRiderIds: data.announced_rider_ids || []
-            });
-        }
-    }, []);
 
     const fetchDataSilent = useCallback(async () => {
         const { data: settingsData } = await supabase.from('contest_settings').select('*').eq('id', 'default').single();
@@ -207,10 +186,17 @@ export default function ResultsPage() {
             playRevealSound();
             await wait(2000);
             setRevealingItem(null);
+
+            // Start the bar animation
             setRevealingRiderId(riderId);
             await wait(barMs + 500);
+
+            // Announcement complete
             setAnnouncedRiderIds(prev => [...new Set([...prev, riderId])]);
             setRevealingRiderId(null);
+
+            // Sync with backend to persist announced state
+            await fetchDataSilent();
         }
         else if (eventType === 'sort_ranks') {
             setAnimationSortDuration(sortDurationMs / 1000);
@@ -261,92 +247,139 @@ export default function ResultsPage() {
             });
             const audienceBreakdown = { id: 'audience', name: 'Audience', score: res.audienceWeightedScore, color: '#f87171', revealed: barRevealedIds.includes('audience') };
             const allItems = [...itemBreakdown, audienceBreakdown];
-            const currentDisplayedScore = allItems.filter(i => displayedIds.includes(i.id)).reduce((a, b) => a + b.score, 0);
-            const sortingScore = allItems.filter(i => sortingIds.includes(i.id)).reduce((a, b) => a + b.score, 0);
+
+            // For Try 1 mode: Sum of currently revealed segments
+            const try1RevealedScore = allItems.filter(i => displayedIds.includes(i.id)).reduce((a, b) => a + b.score, 0);
+
+            // For Sorting: Current revealed score if in Try 1, or Best Score if in Try 2
+            const sortingScore = settings.currentTry === 1
+                ? allItems.filter(i => sortingIds.includes(i.id)).reduce((a, b) => a + b.score, 0)
+                : (announcedRiderIds.includes(res.rider.id) ? res.totalScore : res.try1Total);
 
             const isRevealing2nd = revealingRiderId === res.rider.id;
             const isAnnounced2nd = announcedRiderIds.includes(res.rider.id);
             const try1Score = res.try1Total || 0;
             const try2Score = res.try2Total || 0;
 
-            return { ...res, allItems, currentDisplayedScore, sortingScore, try1Score, try2Score, isRevealing2nd, isAnnounced2nd };
+            return { ...res, allItems, try1RevealedScore, sortingScore, try1Score, try2Score, isRevealing2nd, isAnnounced2nd };
         });
 
-        const sorted = items.sort((a, b) => (b.sortingScore - a.sortingScore) || (a.rider.displayOrder - b.rider.displayOrder));
+        const sorted = items.sort((a, b) => ((b.sortingScore || 0) - (a.sortingScore || 0)) || (a.rider.displayOrder - b.rider.displayOrder));
         let curRank = 1;
         return sorted.map((res, i) => {
-            if (i > 0 && res.sortingScore < sorted[i - 1].sortingScore) curRank = i + 1;
+            if (i > 0 && (res.sortingScore || 0) < (sorted[i - 1].sortingScore || 0)) curRank = i + 1;
             return { ...res, calculatedRank: curRank };
         });
     }, [displayResults, settings, barRevealedIds, displayedIds, sortingIds, revealingRiderId, announcedRiderIds]);
 
     if (loading || !settings) return <div className="min-h-screen flex items-center justify-center bg-black text-white italic">LOADING...</div>;
 
+    const maxPoints = 125; // Example max
+
     return (
         <div className="h-screen w-screen bg-black text-white p-4 uppercase overflow-hidden flex flex-col relative font-sans">
             <AnimatePresence>
                 {!audioEnabled && (
                     <motion.div exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black flex items-center justify-center cursor-pointer" onClick={enableAudio}>
-                        <div className="bg-[#fffa00] text-black px-12 py-6 rounded-full text-3xl font-black">CLICK TO START</div>
+                        <div className="bg-[#fffa00] text-black px-12 py-6 rounded-full text-3xl font-black shadow-[0_0_50px_#fffa00]">CLICK TO START</div>
                     </motion.div>
                 )}
             </AnimatePresence>
 
             <AnimatePresence mode="wait">
                 {revealingItem && (
-                    <motion.div key={revealingItem} initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.5 }} className="fixed inset-0 z-[60] flex items-center justify-center font-black text-white text-9xl text-center px-4 drop-shadow-[0_0_30px_rgba(255,255,255,0.8)]">
+                    <motion.div key={revealingItem} initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.5 }} className="fixed inset-0 z-[60] flex items-center justify-center font-black text-white text-9xl text-center px-4 drop-shadow-[0_0_30px_rgba(255,255,255,1)]">
                         {revealingItem}
                     </motion.div>
                 )}
             </AnimatePresence>
 
+            {/* Legend */}
             <div className="flex justify-end gap-x-8 mb-6 opacity-70 border-b border-white/20 pb-4 h-12 items-end">
                 {settings.evaluationItems.filter(i => i.enabled).map((item, i) => (
                     <div key={item.id} className="flex items-center gap-2">
-                        <div className="w-4 h-4" style={{ backgroundColor: OUTDOOR_COLORS[i % OUTDOOR_COLORS.length] }} />
-                        <span className="text-sm font-bold">{item.name}</span>
+                        <div className="w-4 h-4 rounded-sm" style={{ backgroundColor: OUTDOOR_COLORS[i % OUTDOOR_COLORS.length] }} />
+                        <span className="text-xs font-black">{item.name}</span>
                     </div>
                 ))}
             </div>
 
-            <div className="flex-1 flex flex-col gap-2 min-h-0">
+            <div className="flex-1 flex flex-col gap-3 min-h-0">
                 <AnimatePresence mode="popLayout" initial={false}>
                     {processedRankings.map((res) => (
-                        <motion.div key={res.rider.id} layout transition={{ duration: animationSortDuration }} className="relative flex items-center gap-4 py-2 bg-zinc-900/40 rounded-lg pr-4 border-l-[12px]" style={{ borderLeftColor: res.calculatedRank === 1 ? '#fffa00' : res.calculatedRank === 2 ? '#e2e8f0' : res.calculatedRank === 3 ? '#b45309' : '#333' }}>
-                            <div className="w-48 flex items-center gap-4 pl-4">
-                                <span className={`text-5xl font-black ${res.calculatedRank === 1 ? 'text-[#fffa00]' : 'text-zinc-600'}`}>{res.calculatedRank}</span>
-                                <span className="text-2xl font-black truncate">{res.rider.riderName}</span>
+                        <motion.div
+                            key={res.rider.id}
+                            layout
+                            transition={{ duration: animationSortDuration, ease: "easeInOut" }}
+                            className="relative flex items-center gap-4 py-3 bg-zinc-900/60 rounded-xl pr-6 border-l-[16px] shadow-xl"
+                            style={{ borderLeftColor: res.calculatedRank === 1 ? '#fffa00' : res.calculatedRank === 2 ? '#e2e8f0' : res.calculatedRank === 3 ? '#b45309' : '#333' }}
+                        >
+                            {/* Rank & Name */}
+                            <div className="w-[30%] flex items-center gap-6 pl-6">
+                                <span className={`text-6xl font-black italic ${res.calculatedRank === 1 ? 'text-[#fffa00]' : 'text-zinc-500'}`}>{res.calculatedRank}</span>
+                                <span className="text-3xl font-black truncate tracking-tighter">{res.rider.riderName}</span>
                             </div>
 
-                            <div className="flex-1 flex flex-col gap-1">
-                                <div className="bg-black h-12 relative overflow-hidden flex shadow-[0_0_20px_rgba(0,0,0,0.8)]">
+                            {/* Main Bar Section */}
+                            <div className="flex-1">
+                                <div className="bg-black/50 h-14 relative overflow-hidden flex rounded-sm">
                                     {settings.currentTry === 1 ? (
+                                        // Try 1 Mode: Show segments
                                         res.allItems.map(item => (
-                                            <motion.div key={item.id} animate={{ width: item.revealed ? `${(item.score / 125) * 100}%` : '0%' }} transition={{ duration: animationSettings.bar_transition_speed / 1000 }} style={{ backgroundColor: item.color }} className="h-full" />
+                                            <motion.div
+                                                key={item.id}
+                                                animate={{ width: item.revealed ? `${(item.score / maxPoints) * 100}%` : '0%' }}
+                                                transition={{ duration: animationSettings.bar_transition_speed / 1000 }}
+                                                style={{ backgroundColor: item.color }}
+                                                className="h-full"
+                                            />
                                         ))
                                     ) : (
+                                        // Try 2 Mode: Best of Two Flow
                                         <>
+                                            {/* Base: Try 1 Bar (Blue) */}
+                                            <div className="absolute inset-0 bg-blue-600/40" style={{ width: `${(res.try1Score / maxPoints) * 100}%` }} />
+
+                                            {/* Revealed State: Just show the winning bar color or best of both? 
+                                                Actually, user wants to see the higher one. */}
                                             {!res.isRevealing2nd && (
-                                                <motion.div animate={{ width: res.isAnnounced2nd ? `${(res.totalScore / 125) * 100}%` : `${(res.try1Score / 125) * 100}%` }} className="h-full bg-gradient-to-r from-blue-600 to-emerald-500" />
+                                                <motion.div
+                                                    animate={{
+                                                        width: res.isAnnounced2nd ? `${(res.totalScore / maxPoints) * 100}%` : `${(res.try1Score / maxPoints) * 100}%`,
+                                                        backgroundColor: (res.isAnnounced2nd && res.try2Score > res.try1Score) ? '#10b981' : '#2563eb'
+                                                    }}
+                                                    className="h-full shadow-[inset_0_0_20px_rgba(255,255,255,0.1)]"
+                                                />
                                             )}
+
+                                            {/* Revelation Animation: Emerald bar grows over Try 1 */}
                                             {res.isRevealing2nd && (
                                                 <>
-                                                    <div className="absolute inset-0 bg-blue-600" style={{ width: `${(res.try1Score / 125) * 100}%` }} />
-                                                    <motion.div initial={{ width: 0 }} animate={{ width: `${(res.try2Score / 125) * 100}%` }} transition={{ duration: animationSettings.bar_transition_speed / 1000 }} className="h-full bg-emerald-400 border-r-4 border-white z-10" />
+                                                    <div className="absolute inset-y-0 left-0 bg-blue-600" style={{ width: `${(res.try1Score / maxPoints) * 100}%` }} />
+                                                    <motion.div
+                                                        initial={{ width: 0 }}
+                                                        animate={{ width: `${(res.try2Score / maxPoints) * 100}%` }}
+                                                        transition={{ duration: animationSettings.bar_transition_speed / 1000 }}
+                                                        className="h-full bg-emerald-400 border-r-8 border-white z-10 shadow-[0_0_30px_#10b981]"
+                                                    />
                                                 </>
                                             )}
                                         </>
                                     )}
                                 </div>
-                                <div className="flex gap-4 text-[10px] font-bold opacity-60">
-                                    <span>TRY1: {res.try1Score.toFixed(2)}</span>
-                                    <span>TRY2: {res.try2Score.toFixed(2)}</span>
-                                </div>
                             </div>
 
-                            <div className="w-32 text-right">
-                                <div className="text-4xl font-black text-[#fffa00]">
-                                    <AnimatedCounter value={settings.currentTry === 1 ? res.currentDisplayedScore : (res.isRevealing2nd ? res.try2Score : (res.isAnnounced2nd ? res.totalScore : res.try1Score))} duration={animationSettings.bar_transition_speed} />
+                            {/* Score Display */}
+                            <div className="w-48 text-right">
+                                <div className="text-6xl font-black text-[#fffa00] tabular-nums tracking-tighter">
+                                    <AnimatedCounter
+                                        value={
+                                            settings.currentTry === 1
+                                                ? res.try1RevealedScore
+                                                : (res.isRevealing2nd ? res.try2Score : (res.isAnnounced2nd ? res.totalScore : res.try1Score))
+                                        }
+                                        duration={animationSettings.bar_transition_speed}
+                                    />
                                 </div>
                             </div>
                         </motion.div>
