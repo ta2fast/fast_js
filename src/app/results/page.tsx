@@ -181,22 +181,22 @@ export default function ResultsPage() {
             await wait(barMs);
         }
         else if (eventType === 'reveal_rider_2nd_try') {
-            const { riderId, riderName } = data;
-            setRevealingItem(`NEXT: ${riderName}`);
-            playRevealSound();
-            await wait(2000);
+            const { riderId } = data;
+            // Remove full-screen overlay per user request
             setRevealingItem(null);
 
-            // Start the bar animation
+            // Ensure we have the latest scores before animating
+            await fetchDataSilent();
+
+            // Start the bar growth animation
             setRevealingRiderId(riderId);
+            playRevealSound();
+
             await wait(barMs + 500);
 
-            // Announcement complete
+            // Mark as announced and clear revealing state
             setAnnouncedRiderIds(prev => [...new Set([...prev, riderId])]);
             setRevealingRiderId(null);
-
-            // Sync with backend to persist announced state
-            await fetchDataSilent();
         }
         else if (eventType === 'sort_ranks') {
             setAnimationSortDuration(sortDurationMs / 1000);
@@ -340,29 +340,25 @@ export default function ResultsPage() {
                                             {/* Base: Try 1 Bar (Blue) */}
                                             <div className="absolute inset-0 bg-blue-600/40" style={{ width: `${(res.try1Score / maxPoints) * 100}%` }} />
 
-                                            {/* Revealed State: Just show the winning bar color or best of both? 
-                                                Actually, user wants to see the higher one. */}
-                                            {!res.isRevealing2nd && (
+                                            {/* Revelation Animation: Emerald bar grows over Try 1 */}
+                                            {res.isRevealing2nd ? (
+                                                <>
+                                                    <div className="absolute inset-y-0 left-0 bg-blue-600 z-10" style={{ width: `${(res.try1Score / maxPoints) * 100}%` }} />
+                                                    <motion.div
+                                                        initial={{ width: 0 }}
+                                                        animate={{ width: `${(res.try2Score / maxPoints) * 100}%` }}
+                                                        transition={{ duration: animationSettings.bar_transition_speed / 1000, ease: "easeOut" }}
+                                                        className="h-full bg-emerald-400 border-r-8 border-white z-20 shadow-[0_0_40px_rgba(16,185,129,0.8)]"
+                                                    />
+                                                </>
+                                            ) : (
                                                 <motion.div
                                                     animate={{
-                                                        width: res.isAnnounced2nd ? `${(res.totalScore / maxPoints) * 100}%` : `${(res.try1Score / maxPoints) * 100}%`,
+                                                        width: res.isAnnounced2nd ? `${(Math.max(res.try1Score, res.try2Score) / maxPoints) * 100}%` : `${(res.try1Score / maxPoints) * 100}%`,
                                                         backgroundColor: (res.isAnnounced2nd && res.try2Score > res.try1Score) ? '#10b981' : '#2563eb'
                                                     }}
                                                     className="h-full shadow-[inset_0_0_20px_rgba(255,255,255,0.1)]"
                                                 />
-                                            )}
-
-                                            {/* Revelation Animation: Emerald bar grows over Try 1 */}
-                                            {res.isRevealing2nd && (
-                                                <>
-                                                    <div className="absolute inset-y-0 left-0 bg-blue-600" style={{ width: `${(res.try1Score / maxPoints) * 100}%` }} />
-                                                    <motion.div
-                                                        initial={{ width: 0 }}
-                                                        animate={{ width: `${(res.try2Score / maxPoints) * 100}%` }}
-                                                        transition={{ duration: animationSettings.bar_transition_speed / 1000 }}
-                                                        className="h-full bg-emerald-400 border-r-8 border-white z-10 shadow-[0_0_30px_#10b981]"
-                                                    />
-                                                </>
                                             )}
                                         </>
                                     )}
