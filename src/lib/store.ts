@@ -55,6 +55,8 @@ export {
     releaseJudgeSeat,
 
     // Reset
+    resetRevelations,
+    revealRiderTry,
     resetContestData,
     resetAllJudgeSessions,
     resetScoresAndVotes,

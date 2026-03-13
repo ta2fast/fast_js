@@ -36,7 +36,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
 export async function POST(request: NextRequest): Promise<NextResponse<ApiResponse<JudgeScore>>> {
     try {
         const body = await request.json();
-        const { judgeId, riderId, scores } = body;
+        const { judgeId, riderId, tryNumber, scores } = body;
 
         if (!judgeId || !riderId || !scores || !Array.isArray(scores)) {
             return NextResponse.json(
@@ -56,6 +56,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
         const judgeScore = await submitJudgeScore({
             judgeId,
             riderId,
+            tryNumber: tryNumber || 1,
             scores,
             totalScore,
         });

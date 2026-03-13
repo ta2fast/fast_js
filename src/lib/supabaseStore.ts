@@ -220,17 +220,23 @@ export async function getJudgeScores(): Promise<JudgeScore[]> {
         riderId: row.rider_id,
         scores: row.scores,
         totalScore: parseFloat(row.total_score),
+        tryNumber: row.try_number || 1,
         submittedAt: row.submitted_at,
         locked: row.locked,
     }));
 }
 
-export async function getJudgeScoresForRider(riderId: string): Promise<JudgeScore[]> {
-    const { data, error } = await supabase
+export async function getJudgeScoresForRider(riderId: string, tryNumber?: number): Promise<JudgeScore[]> {
+    let query = supabase
         .from('judge_scores')
         .select('*')
-        .eq('rider_id', riderId)
-        .order('submitted_at', { ascending: false });
+        .eq('rider_id', riderId);
+
+    if (tryNumber) {
+        query = query.eq('try_number', tryNumber);
+    }
+
+    const { data, error } = await query.order('submitted_at', { ascending: false });
 
     if (error) throw error;
     return (data || []).map(row => ({
@@ -239,6 +245,7 @@ export async function getJudgeScoresForRider(riderId: string): Promise<JudgeScor
         riderId: row.rider_id,
         scores: row.scores,
         totalScore: parseFloat(row.total_score),
+        tryNumber: row.try_number || 1,
         submittedAt: row.submitted_at,
         locked: row.locked,
     }));
@@ -257,17 +264,19 @@ export async function getJudgeScoresByJudge(judgeId: string): Promise<JudgeScore
         riderId: row.rider_id,
         scores: row.scores,
         totalScore: parseFloat(row.total_score),
+        tryNumber: row.try_number || 1,
         submittedAt: row.submitted_at,
         locked: row.locked,
     }));
 }
 
-export async function getJudgeScore(judgeId: string, riderId: string): Promise<JudgeScore | null> {
+export async function getJudgeScore(judgeId: string, riderId: string, tryNumber: number): Promise<JudgeScore | null> {
     const { data, error } = await supabase
         .from('judge_scores')
         .select('*')
         .eq('judge_id', judgeId)
         .eq('rider_id', riderId)
+        .eq('try_number', tryNumber)
         .maybeSingle();
 
     if (error) throw error;
@@ -278,17 +287,19 @@ export async function getJudgeScore(judgeId: string, riderId: string): Promise<J
         riderId: data.rider_id,
         scores: data.scores,
         totalScore: parseFloat(data.total_score),
+        tryNumber: data.try_number || 1,
         submittedAt: data.submitted_at,
         locked: data.locked,
     };
 }
 
-export async function hasJudgeScored(judgeId: string, riderId: string): Promise<boolean> {
+export async function hasJudgeScored(judgeId: string, riderId: string, tryNumber: number): Promise<boolean> {
     const { data, error } = await supabase
         .from('judge_scores')
         .select('id')
         .eq('judge_id', judgeId)
         .eq('rider_id', riderId)
+        .eq('try_number', tryNumber)
         .maybeSingle();
 
     if (error) throw error;
@@ -301,6 +312,7 @@ export async function submitJudgeScore(score: Omit<JudgeScore, 'id' | 'submitted
         .select('id')
         .eq('judge_id', score.judgeId)
         .eq('rider_id', score.riderId)
+        .eq('try_number', score.tryNumber || 1)
         .maybeSingle();
 
     if (existing) {
@@ -323,6 +335,7 @@ export async function submitJudgeScore(score: Omit<JudgeScore, 'id' | 'submitted
             riderId: data.rider_id,
             scores: data.scores,
             totalScore: parseFloat(data.total_score),
+            tryNumber: data.try_number || 1,
             submittedAt: data.submitted_at,
             locked: data.locked,
         };
@@ -332,6 +345,7 @@ export async function submitJudgeScore(score: Omit<JudgeScore, 'id' | 'submitted
         id: generateId('score'),
         judge_id: score.judgeId,
         rider_id: score.riderId,
+        try_number: score.tryNumber || 1,
         scores: score.scores,
         total_score: score.totalScore,
         locked: true,
@@ -351,6 +365,7 @@ export async function submitJudgeScore(score: Omit<JudgeScore, 'id' | 'submitted
         riderId: data.rider_id,
         scores: data.scores,
         totalScore: parseFloat(data.total_score),
+        tryNumber: data.try_number || 1,
         submittedAt: data.submitted_at,
         locked: data.locked,
     };
@@ -589,6 +604,8 @@ export async function getSettings(): Promise<ContestSettings> {
             labelFontSize: animConfig.fontSize ?? DEFAULT_CONTEST_SETTINGS.labelFontSize,
             judgeCount: data.judge_count ?? 3,
             judgePassword: data.judge_password ?? '',
+            currentTry: data.current_try ?? 1,
+            announcedRiderIds: data.announced_rider_ids ?? [],
         };
 
         return baseSettings;
@@ -643,6 +660,8 @@ export async function updateSettings(updates: Partial<ContestSettings>): Promise
             revealed_item_ids: revealedWithConfig,
             judge_count: newSettings.judgeCount,
             judge_password: newSettings.judgePassword,
+            current_try: newSettings.currentTry,
+            announced_rider_ids: newSettings.announcedRiderIds,
             updated_at: new Date().toISOString(),
         };
 
@@ -1032,6 +1051,17 @@ export async function initializeStore(): Promise<void> {
     // Database is already initialized via SQL schema
 }
 
+export async function revealRiderTry(riderId: string): Promise<void> {
+    const settings = await getSettings();
+    const announcedRiderIds = settings.announcedRiderIds || [];
+    if (announcedRiderIds.includes(riderId)) return;
+    await updateSettings({ announcedRiderIds: [...announcedRiderIds, riderId] });
+}
+
+export async function resetRevelations(): Promise<void> {
+    await updateSettings({ revealedItemIds: [], announcedRiderIds: [] });
+}
+
 // ==============================
 // Reset Data
 // ==============================
@@ -1054,6 +1084,8 @@ export async function resetContestData(): Promise<void> {
         await updateSettings({
             currentRiderId: null,
             votingEnabled: false,
+            announcedRiderIds: [],
+            revealedItemIds: [],
         });
 
         await addLog('setting_change', 'All statistics and logs reset', {});
@@ -1081,6 +1113,8 @@ export async function resetScoresAndVotes(): Promise<void> {
         await updateSettings({
             currentRiderId: null,
             votingEnabled: false,
+            announcedRiderIds: [],
+            revealedItemIds: [],
         });
 
         await addLog('setting_change', 'Judge scores and audience votes reset', {});

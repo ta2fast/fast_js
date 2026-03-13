@@ -29,24 +29,40 @@ export async function GET(): Promise<NextResponse<ApiResponse<RiderResult[]>>> {
         ]);
 
         const results = riders.map(rider => {
-            const riderJudgeScores = judgeScores.filter(s => s.riderId === rider.id);
+            const riderAllJudgeScores = judgeScores.filter(s => s.riderId === rider.id);
             const riderVotes = audienceVotes.filter(v => v.riderId === rider.id);
 
-            const judgeAverage = calculateJudgeAverage(riderJudgeScores);
+            // Group judge scores by try number
+            const try1JudgeScores = riderAllJudgeScores.filter(s => s.tryNumber === 1);
+            const try2JudgeScores = riderAllJudgeScores.filter(s => s.tryNumber === 2);
+
+            const calculateTryScore = (jScores: typeof riderAllJudgeScores) => {
+                const judgeAvg = calculateJudgeAverage(jScores);
+                const audienceWeighted = calculateAudienceScore(riderVotes, settings.audienceWeight);
+                return calculateTotalScore(judgeAvg, audienceWeighted);
+            };
+
+            const try1Total = calculateTryScore(try1JudgeScores);
+            const try2Total = calculateTryScore(try2JudgeScores);
+
+            // Best score logic
+            const bestTotalScore = Math.max(try1Total, try2Total);
+
             const audienceAverage = calculateAudienceAverage(riderVotes);
             const audienceWeightedScore = calculateAudienceScore(riderVotes, settings.audienceWeight);
-            const totalScore = calculateTotalScore(judgeAverage, audienceWeightedScore);
 
             return {
                 riderId: rider.id,
                 rider,
-                judgeScores: riderJudgeScores,
-                judgeAverage,
+                judgeScores: riderAllJudgeScores, // Keep all for details
+                try1Total,
+                try2Total,
+                judgeAverage: calculateJudgeAverage(riderAllJudgeScores.filter(s => s.totalScore === Math.max(...riderAllJudgeScores.map(sc => sc.totalScore)))), // Contextually we might want avg of best try
                 audienceVotes: riderVotes,
                 audienceAverage,
                 audienceWeightedScore,
-                totalScore,
-                rank: 0, // 後で計算
+                totalScore: bestTotalScore,
+                rank: 0,
                 isFinalized: false,
             };
         });

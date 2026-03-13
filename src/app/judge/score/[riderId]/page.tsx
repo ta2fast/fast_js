@@ -36,24 +36,27 @@ export default function JudgeScorePage() {
 
     async function fetchData(fJudgeId: string) {
         try {
-            const [ridersRes, settingsRes, statusRes] = await Promise.all([
+            const [ridersRes, settingsRes] = await Promise.all([
                 fetch('/api/riders'),
                 fetch('/api/admin/settings'),
-                fetch(`/api/judge/status?judgeId=${fJudgeId}&riderId=${riderId}`),
             ]);
 
             const ridersData = await ridersRes.json();
             const settingsData = await settingsRes.json();
-            const statusData = await statusRes.json();
+
+            let currentTry = 1;
+            if (settingsData.success) {
+                setSettings(settingsData.data);
+                currentTry = settingsData.data.currentTry;
+            }
 
             if (ridersData.success) {
                 const found = ridersData.data.find((r: Rider) => r.id === riderId);
                 setRider(found || null);
             }
 
-            if (settingsData.success) {
-                setSettings(settingsData.data);
-            }
+            const statusRes = await fetch(`/api/judge/status?judgeId=${fJudgeId}&riderId=${riderId}&tryNumber=${currentTry}`);
+            const statusData = await statusRes.json();
 
             if (statusData.success && statusData.data.hasScored) {
                 setAlreadyScored(true);
@@ -122,6 +125,7 @@ export default function JudgeScorePage() {
                 body: JSON.stringify({
                     judgeId: finalJudgeId,
                     riderId,
+                    tryNumber: settings?.currentTry || 1,
                     scores: itemScores,
                 }),
             });
@@ -211,6 +215,11 @@ export default function JudgeScorePage() {
                     <div>
                         <h2 className="text-xl font-bold">{rider.name}</h2>
                         <span className="text-sm text-[var(--text-muted)]">{rider.riderName}</span>
+                    </div>
+                    <div className="ml-auto">
+                        <span className={`px-4 py-1 rounded-full text-sm font-bold border-2 ${settings?.currentTry === 1 ? 'border-blue-500 text-blue-500' : 'border-emerald-500 text-emerald-500'}`}>
+                            {settings?.currentTry === 1 ? '1st Try' : '2nd Try'}
+                        </span>
                     </div>
                 </div>
             </div>

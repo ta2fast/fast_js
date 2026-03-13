@@ -34,6 +34,7 @@ export interface JudgeScore {
   id: string;
   judgeId: string;
   riderId: string;
+  tryNumber: number;      // 1 or 2
   scores: JudgeItemScore[];
   totalScore: number;     // 加重計算後の合計点
   submittedAt: string;
@@ -75,6 +76,8 @@ export interface ContestSettings {
   labelFontSize: 'Small' | 'Medium' | 'Large' | 'Extra Large';
   judgeCount: number;             // 審査員数 (1-10)
   judgePassword?: string;         // ジャッジログイン用パスワード
+  currentTry: number;             // 現在の試技 (1 or 2)
+  announcedRiderIds: string[];    // 発表済みの選手ID (主に2nd Try用)
 }
 
 // 評価項目のカラーパレット
@@ -100,6 +103,8 @@ export interface RiderResult {
   audienceVotes: AudienceVote[];
   audienceAverage: number;      // 観客平均点（5点満点）
   audienceWeightedScore: number; // 観客点 × ウエイト
+  try1Total?: number;
+  try2Total?: number;
   totalScore: number;           // 総合点
   rank: number;
   isFinalized: boolean;         // 確定済みかどうか
@@ -177,5 +182,7 @@ export const DEFAULT_CONTEST_SETTINGS: ContestSettings = {
   labelFontSize: 'Medium',
   judgeCount: 3,
   judgePassword: '',
+  currentTry: 1,
+  announcedRiderIds: [],
 };
 

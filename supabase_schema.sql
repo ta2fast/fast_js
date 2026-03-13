@@ -27,6 +27,7 @@ CREATE TABLE judge_scores (
     rider_id TEXT NOT NULL REFERENCES riders(id),
     scores JSONB NOT NULL, -- JudgeItemScore[]
     total_score NUMERIC NOT NULL,
+    try_number INTEGER DEFAULT 1,
     submitted_at TIMESTAMPTZ DEFAULT NOW(),
     locked BOOLEAN DEFAULT TRUE
 );
@@ -61,6 +62,8 @@ CREATE TABLE contest_settings (
     animation_delay_score_ms INTEGER DEFAULT 2000,
     animation_delay_rank_ms INTEGER DEFAULT 2000,
     judge_count INTEGER DEFAULT 3,
+    current_try INTEGER DEFAULT 1,
+    announced_rider_ids JSONB DEFAULT '[]',
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -85,8 +88,8 @@ CREATE INDEX idx_logs_timestamp ON logs(timestamp DESC);
 -- 同一端末・同一選手への重複投票を防ぐユニーク制約
 CREATE UNIQUE INDEX idx_unique_vote ON audience_votes(device_id, rider_id);
 
--- 同一ジャッジ・同一選手への重複採点を防ぐユニーク制約
-CREATE UNIQUE INDEX idx_unique_judge_score ON judge_scores(judge_id, rider_id);
+-- 同一ジャッジ・同一選手・同一試技への重複採点を防ぐユニーク制約
+CREATE UNIQUE INDEX idx_unique_judge_score ON judge_scores(judge_id, rider_id, try_number);
 
 -- デフォルトのジャッジ3名を挿入
 INSERT INTO judges (id, name, is_active) VALUES

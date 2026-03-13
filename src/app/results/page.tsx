@@ -8,7 +8,6 @@ import {
     RiderResult,
     ContestSettings,
     DEFAULT_CONTEST_SETTINGS,
-    ApiResponse,
 } from '@/types';
 import { supabase } from '@/lib/supabase';
 
@@ -23,14 +22,6 @@ const OUTDOOR_COLORS = [
     '#ff3300', // Blaze Red
     '#33ff00', // Lime Punch
 ];
-
-// Animation Constants
-const LABEL_DISPLAY_TIME = 3000;      // ms
-const BAR_TRANSITION_SPEED = 2000;    // ms
-const SORT_DELAY_TIME = 3000;         // ms
-const SORT_TRANSITION_SPEED = 1500;    // ms
-const ANIMATION_STYLE = 'Pop-in';
-const LABEL_FONT_SIZE_CLASS = 'text-8xl md:text-[12vw]'; // Large
 
 const DEFAULT_ANIMATION_SETTINGS = {
     label_display_time: 3000,
@@ -74,618 +65,294 @@ function AnimatedCounter({ value, duration = 3000 }: { value: number; duration?:
 }
 
 export default function ResultsPage() {
-    // === Display state (what the user sees - only updated after animation) ===
     const [displayResults, setDisplayResults] = useState<RiderResult[]>([]);
     const [settings, setSettings] = useState<ContestSettings | null>(null);
     const [loading, setLoading] = useState(true);
     const [audioEnabled, setAudioEnabled] = useState(false);
     const [revealingItem, setRevealingItem] = useState<string | null>(null);
     const [activeHighlightItem, setActiveHighlightItem] = useState<string | null>(null);
-    const [barRevealedIds, setBarRevealedIds] = useState<string[]>([]);  // Stage 1: bars extend
-    const [displayedIds, setDisplayedIds] = useState<string[]>([]);      // Stage 2: score confirmed
-    const [sortingIds, setSortingIds] = useState<string[]>([]);          // Stage 3: rank reorder
+    const [barRevealedIds, setBarRevealedIds] = useState<string[]>([]);
+    const [displayedIds, setDisplayedIds] = useState<string[]>([]);
+    const [sortingIds, setSortingIds] = useState<string[]>([]);
+    const [revealingRiderId, setRevealingRiderId] = useState<string | null>(null);
+    const [announcedRiderIds, setAnnouncedRiderIds] = useState<string[]>([]);
     const [animationSortDuration, setAnimationSortDuration] = useState(0.8);
     const [animationSettings, setAnimationSettings] = useState(DEFAULT_ANIMATION_SETTINGS);
     const [isFullscreen, setIsFullscreen] = useState(false);
 
     const latestResultsRef = useRef<RiderResult[]>([]);
     const animationSettingsRef = useRef(DEFAULT_ANIMATION_SETTINGS);
-
-    // === Animation lock ===
     const isAnimatingRef = useRef(false);
-
-    // Track revealed items for initial load
     const initialLoadDone = useRef(false);
-
     const audioContextRef = useRef<AudioContext | null>(null);
 
     const playRevealSound = () => {
         if (!audioEnabled) return;
-
         try {
             if (!audioContextRef.current) {
                 const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
                 audioContextRef.current = new AudioContextClass();
             }
-
             const ctx = audioContextRef.current;
-            if (ctx.state === 'suspended') {
-                ctx.resume();
-            }
-
-            const playTone = (freq: number, startTime: number, duration: number, volume: number) => {
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(freq, startTime);
-                // Sparkling frequency sweep
-                osc.frequency.exponentialRampToValueAtTime(freq * 1.5, startTime + duration);
-
-                gain.gain.setValueAtTime(0, startTime);
-                gain.gain.linearRampToValueAtTime(volume, startTime + 0.02);
-                gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-
-                osc.start(startTime);
-                osc.stop(startTime + duration);
-            };
-
+            if (ctx.state === 'suspended') ctx.resume();
             const now = ctx.currentTime;
-            // High-pitched chime chord
-            playTone(880.00, now, 0.6, 0.1);    // A5
-            playTone(1108.73, now + 0.05, 0.5, 0.07); // C#6
-            playTone(1318.51, now + 0.1, 0.4, 0.05);  // E6
-            playTone(1760.00, now + 0.15, 0.3, 0.03); // A6
-        } catch (e) {
-            console.error('[Audio] Setup Error:', e);
-        }
+            const playTone = (freq: number, start: number, dur: number, vol: number) => {
+                const osc = ctx.createOscillator();
+                const g = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, start);
+                osc.frequency.exponentialRampToValueAtTime(freq * 1.5, start + dur);
+                g.gain.setValueAtTime(0, start);
+                g.gain.linearRampToValueAtTime(vol, start + 0.02);
+                g.gain.exponentialRampToValueAtTime(0.001, start + dur);
+                osc.connect(g);
+                g.connect(ctx.destination);
+                osc.start(start);
+                osc.stop(start + dur);
+            };
+            playTone(880, now, 0.6, 0.1);
+            playTone(1108, now + 0.05, 0.5, 0.07);
+        } catch (e) { }
     };
 
     const toggleFullscreen = () => {
         const doc = document as any;
         const elem = document.documentElement as any;
-
-        if (!doc.fullscreenElement && !doc.webkitFullscreenElement && !doc.mozFullScreenElement && !doc.msFullscreenElement) {
-            if (elem.requestFullscreen) {
-                elem.requestFullscreen();
-            } else if (elem.webkitRequestFullscreen) {
-                elem.webkitRequestFullscreen();
-            } else if (elem.mozRequestFullScreen) {
-                elem.mozRequestFullScreen();
-            } else if (elem.msRequestFullscreen) {
-                elem.msRequestFullscreen();
-            }
+        if (!doc.fullscreenElement) {
+            if (elem.requestFullscreen) elem.requestFullscreen();
         } else {
-            if (doc.exitFullscreen) {
-                doc.exitFullscreen();
-            } else if (doc.webkitExitFullscreen) {
-                doc.webkitExitFullscreen();
-            } else if (doc.mozCancelFullScreen) {
-                doc.mozCancelFullScreen();
-            } else if (doc.msExitFullscreen) {
-                doc.msExitFullscreen();
-            }
+            if (doc.exitFullscreen) doc.exitFullscreen();
         }
     };
-
-    useEffect(() => {
-        const handleFullscreenChange = () => {
-            const doc = document as any;
-            setIsFullscreen(!!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement));
-        };
-
-        document.addEventListener('fullscreenchange', handleFullscreenChange);
-        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
-        document.addEventListener('MSFullscreenChange', handleFullscreenChange);
-
-        return () => {
-            document.removeEventListener('fullscreenchange', handleFullscreenChange);
-            document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
-            document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
-            document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
-        };
-    }, []);
 
     const enableAudio = () => {
         const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
         const ctx = new AudioContextClass();
         audioContextRef.current = ctx;
-
-        ctx.resume().then(() => {
-            setAudioEnabled(true);
-            // Play a silent seed tone to unlock
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            gain.gain.value = 0;
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.start();
-            osc.stop(ctx.currentTime + 0.1);
-        });
+        ctx.resume().then(() => setAudioEnabled(true));
     };
 
-
-
     const fetchContestSettings = useCallback(async () => {
-        try {
-            const { data, error } = await supabase.from('contest_settings').select('*').eq('id', 'default').single();
-            if (data && !error) {
-                setSettings({
-                    ...DEFAULT_CONTEST_SETTINGS,
-                    ...data,
-                    evaluationItems: data.evaluation_items || DEFAULT_CONTEST_SETTINGS.evaluationItems,
-                });
-            }
-        } catch (err) {
-            console.error('[Results] Failed to fetch contest settings', err);
+        const { data } = await supabase.from('contest_settings').select('*').eq('id', 'default').single();
+        if (data) {
+            setSettings({
+                ...DEFAULT_CONTEST_SETTINGS,
+                ...data,
+                evaluationItems: data.evaluation_items || DEFAULT_CONTEST_SETTINGS.evaluationItems,
+                announcedRiderIds: data.announced_rider_ids || []
+            });
         }
     }, []);
 
-    // === Fetch data WITHOUT updating display (background sync) ===
     const fetchDataSilent = useCallback(async () => {
-        try {
-            // Fetch settings alongside scores
-            await fetchContestSettings();
+        const { data: settingsData } = await supabase.from('contest_settings').select('*').eq('id', 'default').single();
+        let currentAnnounced: string[] = [];
+        if (settingsData) {
+            currentAnnounced = settingsData.announced_rider_ids || [];
+            setSettings({
+                ...DEFAULT_CONTEST_SETTINGS,
+                ...settingsData,
+                evaluationItems: settingsData.evaluation_items || DEFAULT_CONTEST_SETTINGS.evaluationItems,
+                announcedRiderIds: currentAnnounced
+            });
+        }
 
-            const scoresRes = await fetch('/api/scores', { cache: 'no-store' });
-            const scoresData = await scoresRes.json();
-
-            if (!scoresData.success) {
-                console.warn('[Results] Partial data fetch failed');
-                return;
-            }
-
-            const currentResults = scoresData.data as RiderResult[];
+        const res = await fetch('/api/scores', { cache: 'no-store' });
+        const json = await res.json();
+        if (json.success) {
+            const currentResults = json.data as RiderResult[];
             latestResultsRef.current = currentResults;
+            setAnnouncedRiderIds(currentAnnounced);
 
-            // First load initialization
             if (!initialLoadDone.current) {
                 initialLoadDone.current = true;
                 setDisplayResults(currentResults);
-
-                // Start with all bars hidden (0%) and 0 scores displayed
-                setBarRevealedIds([]);
-                setDisplayedIds([]);
-                setSortingIds([]);
-
                 setLoading(false);
-                return;
+            } else {
+                setDisplayResults(currentResults);
             }
-
-            // Sync latest results silently in background
-            setDisplayResults(currentResults);
-
-        } catch (error) {
-            console.error('[Results] fetchDataSilent error:', error);
-        }
-    }, [fetchContestSettings]);
-
-    const fetchAnimationSettings = useCallback(async () => {
-        try {
-            const { data, error } = await supabase.from('animation_settings').select('*').eq('id', 1).single();
-            if (data && !error) {
-                const newSettings = {
-                    label_display_time: (data.label_display_time < 100 ? data.label_display_time * 1000 : data.label_display_time) ?? DEFAULT_ANIMATION_SETTINGS.label_display_time,
-                    bar_transition_speed: (data.bar_transition_speed < 100 ? data.bar_transition_speed * 1000 : data.bar_transition_speed) ?? DEFAULT_ANIMATION_SETTINGS.bar_transition_speed,
-                    sort_delay_time: (data.sort_delay_time < 100 ? data.sort_delay_time * 1000 : data.sort_delay_time) ?? DEFAULT_ANIMATION_SETTINGS.sort_delay_time,
-                    sort_transition_speed: (data.sort_transition_speed < 100 ? data.sort_transition_speed * 1000 : data.sort_transition_speed) ?? DEFAULT_ANIMATION_SETTINGS.sort_transition_speed,
-                    animation_style: data.animation_style || DEFAULT_ANIMATION_SETTINGS.animation_style,
-                    label_font_size: data.label_font_size || DEFAULT_ANIMATION_SETTINGS.label_font_size,
-                    label_transition_speed: 600, // Unify label animation duration for better visibility
-                };
-                setAnimationSettings(newSettings);
-                animationSettingsRef.current = newSettings;
-            }
-        } catch (err) {
-            console.error('[Results] Failed to fetch animation settings', err);
         }
     }, []);
 
-    // Load Animation Settings once on mount
-    useEffect(() => {
-        fetchAnimationSettings();
-    }, [fetchAnimationSettings]);
-
-    // === Handle Broadcast Action ===
     const handleBroadcastEvent = useCallback(async (payload: any) => {
         if (isAnimatingRef.current) return;
+        isAnimatingRef.current = true;
+        await fetchDataSilent();
 
-        try {
-            isAnimatingRef.current = true;
-            // Force data refresh before animation
-            await fetchDataSilent();
+        const eventType = payload.event;
+        const data = payload.payload;
+        const barMs = animationSettingsRef.current.bar_transition_speed;
+        const sortDurationMs = animationSettingsRef.current.sort_transition_speed;
 
-            const eventType = payload.event;
-            const data = payload.payload;
-
-            const labelMs = animationSettingsRef.current.label_display_time;
-            const barMs = animationSettingsRef.current.bar_transition_speed;
-            const sortDelayMs = animationSettingsRef.current.sort_delay_time;
-            const sortDurationMs = animationSettingsRef.current.sort_transition_speed;
-
-            if (eventType === 'show_label') {
-                const { itemName } = data;
-                playRevealSound();
-                console.log(`[Animation] Showing Label: ${itemName}`);
-                setActiveHighlightItem(itemName);
-                setRevealingItem(itemName);
-            }
-            else if (eventType === 'hide_label') {
-                console.log(`[Animation] Hiding Label`);
-                setRevealingItem(null);
-            }
-            else if (eventType === 'reveal_score') {
-                const { itemId, itemName } = data;
-                console.log(`[Animation] Revealing Score: ${itemName}`);
-                setRevealingItem(null); // Ensure label is hidden
-
-                const newRevealedIds = [...new Set([...barRevealedIds, itemId])];
-                setBarRevealedIds(newRevealedIds);
-                setDisplayedIds(newRevealedIds);
-
-                await wait(barMs);
-            }
-            else if (eventType === 'reveal_item') {
-                // Keep for legacy, but simplified (no auto-sort)
-                const { itemId, itemName } = data;
-                playRevealSound();
-
-                console.log(`[Animation] Quick Revealing: ${itemName}`);
-                setActiveHighlightItem(itemName);
-                setRevealingItem(itemName);
-                await wait(labelMs);
-
-                setRevealingItem(null);
-                await wait(500);
-
-                const newRevealedIds = [...new Set([...barRevealedIds, itemId])];
-                setBarRevealedIds(newRevealedIds);
-                setDisplayedIds(newRevealedIds);
-
-                await wait(barMs);
-            }
-            else if (eventType === 'sort_ranks') {
-                console.log(`[Animation] Manual Sorting Ranks`);
-                await fetchDataSilent(); // Sync latest scores before sort
-                setAnimationSortDuration(sortDurationMs / 1000);
-                setSortingIds([...barRevealedIds]);
-                await wait(sortDurationMs);
-                setActiveHighlightItem(null);
-            }
-            else if (eventType === 'reset') {
-                console.log(`[Animation] Resetting display`);
-                setBarRevealedIds([]);
-                setDisplayedIds([]);
-                setSortingIds([]);
-
-                // If the reset came from the settings page, reload the settings
-                if (data?.reloadSettings) {
-                    console.log(`[Animation] Reloading settings from database`);
-                    await fetchAnimationSettings();
-                }
-            }
-
-        } catch (err) {
-            console.error('[Animation] Broadcast Event Error:', err);
-        } finally {
-            isAnimatingRef.current = false;
+        if (eventType === 'show_label') {
+            const { itemName } = data;
+            playRevealSound();
+            setActiveHighlightItem(itemName);
+            setRevealingItem(itemName);
         }
-    }, [audioEnabled, fetchDataSilent, barRevealedIds]);
-
-    // Setup Realtime Listener
-    useEffect(() => {
-        // Initial fetch
-        fetchDataSilent();
-
-        // Listen to Broadcast from Admin Results Control
-        const channel = supabase.channel('animation_control')
-            .on('broadcast', { event: 'show_label' }, (payload) => handleBroadcastEvent(payload))
-            .on('broadcast', { event: 'hide_label' }, (payload) => handleBroadcastEvent(payload))
-            .on('broadcast', { event: 'reveal_score' }, (payload) => handleBroadcastEvent(payload))
-            .on('broadcast', { event: 'reveal_item' }, (payload) => handleBroadcastEvent(payload))
-            .on('broadcast', { event: 'sort_ranks' }, (payload) => handleBroadcastEvent(payload))
-            .on('broadcast', { event: 'reset' }, (payload) => handleBroadcastEvent(payload))
-            .subscribe((status) => {
-                if (status === 'SUBSCRIBED') {
-                    console.log('[Results] Subscribed to animation_control channel');
+        else if (eventType === 'hide_label') {
+            setRevealingItem(null);
+        }
+        else if (eventType === 'reveal_score') {
+            const { itemId } = data;
+            setRevealingItem(null);
+            const newIds = [...new Set([...barRevealedIds, itemId])];
+            setBarRevealedIds(newIds);
+            setDisplayedIds(newIds);
+            await wait(barMs);
+        }
+        else if (eventType === 'reveal_rider_2nd_try') {
+            const { riderId, riderName } = data;
+            setRevealingItem(`NEXT: ${riderName}`);
+            playRevealSound();
+            await wait(2000);
+            setRevealingItem(null);
+            setRevealingRiderId(riderId);
+            await wait(barMs + 500);
+            setAnnouncedRiderIds(prev => [...new Set([...prev, riderId])]);
+            setRevealingRiderId(null);
+        }
+        else if (eventType === 'sort_ranks') {
+            setAnimationSortDuration(sortDurationMs / 1000);
+            setSortingIds([...barRevealedIds]);
+            await wait(sortDurationMs);
+            setActiveHighlightItem(null);
+        }
+        else if (eventType === 'reset') {
+            setBarRevealedIds([]);
+            setDisplayedIds([]);
+            setSortingIds([]);
+            setAnnouncedRiderIds([]);
+            setRevealingRiderId(null);
+            if (data?.reloadSettings) {
+                const { data: animData } = await supabase.from('animation_settings').select('*').eq('id', 1).single();
+                if (animData) {
+                    const newAnim = { ...DEFAULT_ANIMATION_SETTINGS, ...animData };
+                    setAnimationSettings(newAnim);
+                    animationSettingsRef.current = newAnim;
                 }
-            });
+            }
+        }
+        isAnimatingRef.current = false;
+    }, [fetchDataSilent, barRevealedIds]);
 
-        return () => {
-            supabase.removeChannel(channel);
-        };
+    useEffect(() => {
+        fetchDataSilent();
+        const channel = supabase.channel('animation_control')
+            .on('broadcast', { event: 'show_label' }, (p) => handleBroadcastEvent(p))
+            .on('broadcast', { event: 'hide_label' }, (p) => handleBroadcastEvent(p))
+            .on('broadcast', { event: 'reveal_score' }, (p) => handleBroadcastEvent(p))
+            .on('broadcast', { event: 'reveal_rider_2nd_try' }, (p) => handleBroadcastEvent(p))
+            .on('broadcast', { event: 'sort_ranks' }, (p) => handleBroadcastEvent(p))
+            .on('broadcast', { event: 'reset' }, (p) => handleBroadcastEvent(p))
+            .subscribe();
+        return () => { supabase.removeChannel(channel); };
     }, [fetchDataSilent, handleBroadcastEvent]);
 
     const processedRankings = useMemo(() => {
         if (!settings || displayResults.length === 0) return [];
-
-        const enabledItems = settings.evaluationItems
-            .filter(item => item.enabled)
-            .sort((a, b) => a.order - b.order);
+        const enabledItems = settings.evaluationItems.filter(i => i.enabled).sort((a, b) => a.order - b.order);
 
         const items = displayResults.map(res => {
-            // Calculate breakdown based on judge scores
             const itemBreakdown = enabledItems.map((item, index) => {
-                const itemScoresAcrossJudges = res.judgeScores.map(js => {
-                    const s = js.scores.find(is => is.itemId === item.id);
-                    return s ? s.score * item.weight : 0;
-                });
-
-                const avg = itemScoresAcrossJudges.length > 0
-                    ? itemScoresAcrossJudges.reduce((a, b) => a + b, 0) / itemScoresAcrossJudges.length
-                    : 0;
-
-                return {
-                    id: item.id,
-                    name: item.name,
-                    score: avg,
-                    color: OUTDOOR_COLORS[index % OUTDOOR_COLORS.length],
-                    revealed: barRevealedIds.includes(item.id)
-                };
+                const sAcross = res.judgeScores.map(js => (js.scores.find(is => is.itemId === item.id)?.score || 0) * item.weight);
+                const avg = sAcross.length ? sAcross.reduce((a, b) => a + b, 0) / sAcross.length : 0;
+                return { id: item.id, name: item.name, score: avg, color: OUTDOOR_COLORS[index % OUTDOOR_COLORS.length], revealed: barRevealedIds.includes(item.id) };
             });
-
-            // Audience score
-            const audienceBreakdown = {
-                id: 'audience',
-                name: 'Audience',
-                score: res.audienceWeightedScore,
-                color: '#f87171',
-                revealed: barRevealedIds.includes('audience')
-            };
-
+            const audienceBreakdown = { id: 'audience', name: 'Audience', score: res.audienceWeightedScore, color: '#f87171', revealed: barRevealedIds.includes('audience') };
             const allItems = [...itemBreakdown, audienceBreakdown];
+            const currentDisplayedScore = allItems.filter(i => displayedIds.includes(i.id)).reduce((a, b) => a + b.score, 0);
+            const sortingScore = allItems.filter(i => sortingIds.includes(i.id)).reduce((a, b) => a + b.score, 0);
 
-            // Score counter uses displayedIds
-            const currentDisplayedScore = allItems
-                .filter(item => displayedIds.includes(item.id))
-                .reduce((sum, item) => sum + item.score, 0);
+            const isRevealing2nd = revealingRiderId === res.rider.id;
+            const isAnnounced2nd = announcedRiderIds.includes(res.rider.id);
+            const try1Score = res.try1Total || 0;
+            const try2Score = res.try2Total || 0;
 
-            const sortingScore = allItems
-                .filter(item => sortingIds.includes(item.id))
-                .reduce((sum, item) => sum + item.score, 0);
-
-            return {
-                ...res,
-                allItems,
-                currentDisplayedScore,
-                sortingScore
-            };
+            return { ...res, allItems, currentDisplayedScore, sortingScore, try1Score, try2Score, isRevealing2nd, isAnnounced2nd };
         });
 
-        const sorted = items.sort((a, b) => {
-            if (b.sortingScore !== a.sortingScore) {
-                return b.sortingScore - a.sortingScore;
-            }
-            return a.rider.displayOrder - b.rider.displayOrder;
+        const sorted = items.sort((a, b) => (b.sortingScore - a.sortingScore) || (a.rider.displayOrder - b.rider.displayOrder));
+        let curRank = 1;
+        return sorted.map((res, i) => {
+            if (i > 0 && res.sortingScore < sorted[i - 1].sortingScore) curRank = i + 1;
+            return { ...res, calculatedRank: curRank };
         });
+    }, [displayResults, settings, barRevealedIds, displayedIds, sortingIds, revealingRiderId, announcedRiderIds]);
 
-        // Calculate ranks with ties
-        let currentRank = 1;
-        return sorted.map((res, index) => {
-            if (index > 0 && res.sortingScore < sorted[index - 1].sortingScore) {
-                currentRank = index + 1;
-            }
-            return {
-                ...res,
-                calculatedRank: currentRank
-            };
-        });
-    }, [displayResults, settings, barRevealedIds, displayedIds, sortingIds]);
-
-    if (loading || !settings) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] text-white">
-                <div className="text-4xl font-bold animate-pulse tracking-widest italic">LOADING RESULTS...</div>
-            </div>
-        );
-    }
-
-    const enabledItems = settings.evaluationItems
-        .filter(item => item.enabled)
-        .sort((a, b) => a.order - b.order);
+    if (loading || !settings) return <div className="min-h-screen flex items-center justify-center bg-black text-white italic">LOADING...</div>;
 
     return (
-        <div className="h-screen w-screen bg-black text-white p-4 uppercase overflow-hidden flex flex-col relative">
-            {/* Audio Activator Overlay */}
+        <div className="h-screen w-screen bg-black text-white p-4 uppercase overflow-hidden flex flex-col relative font-sans">
             <AnimatePresence>
                 {!audioEnabled && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-8 text-center cursor-pointer"
-                        onClick={enableAudio}
-                    >
-                        <motion.div
-                            animate={{ scale: [1, 1.05, 1] }}
-                            transition={{ repeat: Infinity, duration: 2 }}
-                            className="bg-[#fffa00] text-black px-12 py-6 rounded-full text-3xl md:text-5xl font-black mb-8 shadow-[0_0_50px_rgba(255,250,0,0.5)]"
-                        >
-                            CLICK TO START
-                        </motion.div>
-                        <p className="text-zinc-400 text-xl tracking-widest italic">
-                            ACTIVATE AUDIO FOR THE SHOW
-                        </p>
+                    <motion.div exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black flex items-center justify-center cursor-pointer" onClick={enableAudio}>
+                        <div className="bg-[#fffa00] text-black px-12 py-6 rounded-full text-3xl font-black">CLICK TO START</div>
                     </motion.div>
                 )}
             </AnimatePresence>
 
-            {/* Now Revealing Overlay */}
             <AnimatePresence mode="wait">
                 {revealingItem && (
-                    <motion.div
-                        key={revealingItem}
-                        variants={{
-                            initial: animationSettings.animation_style === 'Fade'
-                                ? { opacity: 0, scale: 0.9 }
-                                : animationSettings.animation_style === 'Slide'
-                                    ? { opacity: 0, x: -800, rotate: -10 }
-                                    : { opacity: 0, scale: 0, rotate: -20 },
-                            animate: animationSettings.animation_style === 'Fade'
-                                ? { opacity: 1, scale: 1 }
-                                : animationSettings.animation_style === 'Slide'
-                                    ? { opacity: 1, x: 0, rotate: 0 }
-                                    : { opacity: 1, scale: [0, 1.3, 1], rotate: 0 },
-                            exit: { opacity: 0, scale: 1.5, filter: 'blur(20px)', transition: { duration: 0.3 } }
-                        }}
-                        initial="initial"
-                        animate="animate"
-                        exit="exit"
-                        transition={
-                            animationSettings.animation_style === 'Slide'
-                                ? { type: 'spring', damping: 15, stiffness: 100 }
-                                : { duration: 0.6, ease: 'easeOut' }
-                        }
-                        className={`
-                            fixed inset-0 z-[60] flex items-center justify-center pointer-events-none
-                            font-black tracking-tighter leading-none text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.8)] text-center px-4
-                            ${animationSettings.label_font_size}
-                        `}
-                    >
+                    <motion.div key={revealingItem} initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.5 }} className="fixed inset-0 z-[60] flex items-center justify-center font-black text-white text-9xl text-center px-4 drop-shadow-[0_0_30px_rgba(255,255,255,0.8)]">
                         {revealingItem}
                     </motion.div>
                 )}
             </AnimatePresence>
 
-
-            {/* High-visibility Legend */}
-            <div className="flex justify-end gap-x-8 mb-6 opacity-90 border-b border-white/20 pb-4 h-12 items-end">
-                {enabledItems.map((item, i) => {
-                    const isActive = item.name === activeHighlightItem;
-                    return (
-                        <motion.div
-                            animate={isActive ? { scale: 1.3, y: -5 } : { scale: 1, y: 0 }}
-                            className={`flex items-center gap-2 transition-colors ${isActive ? 'text-[#fffa00]' : 'text-white'}`}
-                        >
-                            <div
-                                className={`w-4 h-4 border-2 ${isActive ? 'border-[#fffa00] shadow-[0_0_10px_rgba(255,250,0,0.8)]' : 'border-white'}`}
-                                style={{ backgroundColor: OUTDOOR_COLORS[i % OUTDOOR_COLORS.length] }}
-                            />
-                            <span className={`text-sm md:text-base font-black tracking-tight ${isActive ? 'drop-shadow-[0_0_8px_rgba(255,250,0,0.6)]' : ''}`}>
-                                {item.name}
-                            </span>
-                        </motion.div>
-                    );
-                })}
-                <motion.div
-                    animate={activeHighlightItem === 'AUDIENCE SCORE' ? { scale: 1.3, y: -5 } : { scale: 1, y: 0 }}
-                    className={`flex items-center gap-2 transition-colors ${activeHighlightItem === 'AUDIENCE SCORE' ? 'text-[#fffa00]' : 'text-white'}`}
-                >
-                    <div className={`w-4 h-4 border-2 ${activeHighlightItem === 'AUDIENCE SCORE' ? 'border-[#fffa00] shadow-[0_0_10px_rgba(255,250,0,0.8)]' : 'border-white'} bg-[#f87171]`} />
-                    <span className={`text-sm md:text-base font-black tracking-tight ${activeHighlightItem === 'AUDIENCE SCORE' ? 'drop-shadow-[0_0_8px_rgba(255,250,0,0.6)]' : ''}`}>
-                        Audience
-                    </span>
-                </motion.div>
+            <div className="flex justify-end gap-x-8 mb-6 opacity-70 border-b border-white/20 pb-4 h-12 items-end">
+                {settings.evaluationItems.filter(i => i.enabled).map((item, i) => (
+                    <div key={item.id} className="flex items-center gap-2">
+                        <div className="w-4 h-4" style={{ backgroundColor: OUTDOOR_COLORS[i % OUTDOOR_COLORS.length] }} />
+                        <span className="text-sm font-bold">{item.name}</span>
+                    </div>
+                ))}
             </div>
 
-            <div className="flex-1 flex flex-col gap-3 min-h-0">
+            <div className="flex-1 flex flex-col gap-2 min-h-0">
                 <AnimatePresence mode="popLayout" initial={false}>
-                    {processedRankings.map((res, index) => (
-                        <motion.div
-                            key={res.rider.id}
-                            layout
-                            initial={{ opacity: 0, y: 30 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            transition={{
-                                layout: { type: 'tween', ease: 'easeInOut', duration: animationSortDuration },
-                                opacity: { duration: 0.3 }
-                            }}
-                            className={`relative flex items-center gap-4 ${res.calculatedRank <= 3 ? 'flex-[1.3] py-2 md:py-3' : 'flex-1 py-1 md:py-2'} min-h-0 bg-zinc-900/40 rounded-lg pr-4 border-l-[12px] ${res.calculatedRank <= 3 ? 'shadow-[0_0_20px_rgba(255,250,0,0.2)]' : ''}`}
-                            style={{
-                                borderLeftColor: res.calculatedRank === 1 ? '#fffa00' : res.calculatedRank === 2 ? '#e2e8f0' : res.calculatedRank === 3 ? '#b45309' : '#333'
-                            }}
-                        >
-                            {/* Rank & Name */}
-                            <div className="w-[160px] md:w-[300px] flex items-center gap-3 shrink-0 pl-4">
-                                <motion.div
-                                    className={`${res.calculatedRank <= 3 ? 'text-4xl md:text-6xl w-14 md:w-24' : 'text-3xl md:text-4xl w-10 md:w-16'} font-bold shrink-0 ${res.calculatedRank === 1 ? 'text-[#fffa00] drop-shadow-[0_0_10px_rgba(255,250,0,0.8)]' :
-                                        res.calculatedRank === 2 ? 'text-[#e2e8f0] drop-shadow-[0_0_10px_rgba(226,232,240,0.8)]' :
-                                            res.calculatedRank === 3 ? 'text-[#b45309] drop-shadow-[0_0_10px_rgba(180,83,9,0.8)]' :
-                                                'text-zinc-600'
-                                        }`}
-                                >
-                                    {res.calculatedRank}
-                                </motion.div>
-                                <div className="flex flex-col min-w-0">
-                                    <span className={`${res.calculatedRank <= 3 ? 'text-xl md:text-3xl' : 'text-lg md:text-xl'} text-white truncate font-black tracking-tight leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]`}>{res.rider.riderName}</span>
+                    {processedRankings.map((res) => (
+                        <motion.div key={res.rider.id} layout transition={{ duration: animationSortDuration }} className="relative flex items-center gap-4 py-2 bg-zinc-900/40 rounded-lg pr-4 border-l-[12px]" style={{ borderLeftColor: res.calculatedRank === 1 ? '#fffa00' : res.calculatedRank === 2 ? '#e2e8f0' : res.calculatedRank === 3 ? '#b45309' : '#333' }}>
+                            <div className="w-48 flex items-center gap-4 pl-4">
+                                <span className={`text-5xl font-black ${res.calculatedRank === 1 ? 'text-[#fffa00]' : 'text-zinc-600'}`}>{res.calculatedRank}</span>
+                                <span className="text-2xl font-black truncate">{res.rider.riderName}</span>
+                            </div>
+
+                            <div className="flex-1 flex flex-col gap-1">
+                                <div className="bg-black h-12 relative overflow-hidden flex shadow-[0_0_20px_rgba(0,0,0,0.8)]">
+                                    {settings.currentTry === 1 ? (
+                                        res.allItems.map(item => (
+                                            <motion.div key={item.id} animate={{ width: item.revealed ? `${(item.score / 125) * 100}%` : '0%' }} transition={{ duration: animationSettings.bar_transition_speed / 1000 }} style={{ backgroundColor: item.color }} className="h-full" />
+                                        ))
+                                    ) : (
+                                        <>
+                                            {!res.isRevealing2nd && (
+                                                <motion.div animate={{ width: res.isAnnounced2nd ? `${(res.totalScore / 125) * 100}%` : `${(res.try1Score / 125) * 100}%` }} className="h-full bg-gradient-to-r from-blue-600 to-emerald-500" />
+                                            )}
+                                            {res.isRevealing2nd && (
+                                                <>
+                                                    <div className="absolute inset-0 bg-blue-600" style={{ width: `${(res.try1Score / 125) * 100}%` }} />
+                                                    <motion.div initial={{ width: 0 }} animate={{ width: `${(res.try2Score / 125) * 100}%` }} transition={{ duration: animationSettings.bar_transition_speed / 1000 }} className="h-full bg-emerald-400 border-r-4 border-white z-10" />
+                                                </>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                                <div className="flex gap-4 text-[10px] font-bold opacity-60">
+                                    <span>TRY1: {res.try1Score.toFixed(2)}</span>
+                                    <span>TRY2: {res.try2Score.toFixed(2)}</span>
                                 </div>
                             </div>
 
-                            {/* Stacked Bar Container */}
-                            <div className="flex-1 bg-black h-[50%] md:h-16 relative overflow-hidden flex shadow-[0_0_30px_rgba(0,0,0,0.8)]">
-                                {res.allItems.map((item) => (
-                                    <motion.div
-                                        key={item.id}
-                                        initial={false}
-                                        animate={{
-                                            width: item.revealed ? `${(item.score / 125) * 100}%` : '0%'
-                                        }}
-                                        transition={{
-                                            type: 'tween',
-                                            duration: animationSettings.bar_transition_speed / 1000,
-                                            ease: 'easeOut'
-                                        }}
-                                        style={{
-                                            backgroundColor: item.color,
-                                            boxShadow: item.revealed ? `inset 0 0 20px rgba(255,255,255,0.4), 0 0 15px ${item.color}66` : 'none'
-                                        }}
-                                        className="h-full relative flex items-center justify-center overflow-hidden"
-                                    >
-                                        {item.revealed && item.score > 2 && (
-                                            <motion.span
-                                                initial={{ opacity: 0, scale: 0.5 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                transition={{ delay: 1 }}
-                                                className="text-black font-bold text-sm md:text-lg tracking-tight whitespace-nowrap"
-                                            >
-                                                {item.score.toFixed(1)}
-                                            </motion.span>
-                                        )}
-                                    </motion.div>
-                                ))}
-                            </div>
-
-                            <div className="w-24 md:w-40 text-right shrink-0">
-                                <div className={`${res.calculatedRank <= 3 ? 'text-3xl md:text-5xl' : 'text-2xl md:text-4xl'} font-bold tracking-tight text-[#fffa00] drop-shadow-[0_0_10px_rgba(255,250,0,0.5)]`}>
-                                    <AnimatedCounter
-                                        value={res.currentDisplayedScore}
-                                        duration={animationSettingsRef.current.bar_transition_speed}
-                                    />
+                            <div className="w-32 text-right">
+                                <div className="text-4xl font-black text-[#fffa00]">
+                                    <AnimatedCounter value={settings.currentTry === 1 ? res.currentDisplayedScore : (res.isRevealing2nd ? res.try2Score : (res.isAnnounced2nd ? res.totalScore : res.try1Score))} duration={animationSettings.bar_transition_speed} />
                                 </div>
                             </div>
                         </motion.div>
                     ))}
                 </AnimatePresence>
             </div>
-
-            <style jsx global>{`
-        body {
-          background-color: black;
-          overflow: hidden;
-        }
-      `}</style>
-
-            {/* Fullscreen Toggle Button */}
-            <button
-                onClick={toggleFullscreen}
-                className="fixed bottom-4 right-4 z-50 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-all opacity-40 hover:opacity-100 group"
-                title={isFullscreen ? "全画面解除" : "全画面表示"}
-            >
-                {isFullscreen ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
-                        <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
-                    </svg>
-                ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
-                        <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
-                    </svg>
-                )}
-            </button>
         </div>
     );
 }
