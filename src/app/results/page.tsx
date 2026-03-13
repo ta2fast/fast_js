@@ -132,7 +132,8 @@ export default function ResultsPage() {
                 ...DEFAULT_CONTEST_SETTINGS,
                 ...settingsData,
                 evaluationItems: settingsData.evaluation_items || DEFAULT_CONTEST_SETTINGS.evaluationItems,
-                announcedRiderIds: currentAnnounced
+                announcedRiderIds: currentAnnounced,
+                currentTry: settingsData.current_try ?? 1,
             });
         }
 
