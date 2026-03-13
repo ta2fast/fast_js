@@ -123,6 +123,8 @@ export default function ResultsPage() {
         ctx.resume().then(() => setAudioEnabled(true));
     };
 
+    const [sortedRiderIds, setSortedRiderIds] = useState<string[]>([]);
+
     const fetchDataSilent = useCallback(async () => {
         const { data: settingsData } = await supabase.from('contest_settings').select('*').eq('id', 'default').single();
         let currentAnnounced: string[] = [];
@@ -143,11 +145,19 @@ export default function ResultsPage() {
             const currentResults = json.data as RiderResult[];
             latestResultsRef.current = currentResults;
             setAnnouncedRiderIds(currentAnnounced);
+            // If we are in try 2 and some are announced, they might already be sorted in the DB/Logic
+            // but for animation stability, we track them separately in sortedRiderIds
+            if (initialLoadDone.current && (settingsData?.current_try ?? 1) === 2) {
+                // Keep sortedIds in sync with announced unless we are in the middle of a reveal
+            }
 
             if (!initialLoadDone.current) {
                 initialLoadDone.current = true;
                 setDisplayResults(currentResults);
                 setLoading(false);
+                if (settingsData?.current_try === 2) {
+                    setSortedRiderIds(currentAnnounced);
+                }
             } else {
                 setDisplayResults(currentResults);
             }
@@ -183,33 +193,31 @@ export default function ResultsPage() {
         }
         else if (eventType === 'reveal_rider_2nd_try') {
             const { riderId } = data;
-            // Remove full-screen overlay per user request
             setRevealingItem(null);
-
-            // Ensure we have the latest scores before animating
             await fetchDataSilent();
-
-            // Start the bar growth animation
             setRevealingRiderId(riderId);
             playRevealSound();
-
             await wait(barMs + 500);
-
-            // Mark as announced and clear revealing state
             setAnnouncedRiderIds(prev => [...new Set([...prev, riderId])]);
-            setRevealingRiderId(null);
+            // Keep revealingRiderId set until sort_ranks
         }
         else if (eventType === 'sort_ranks') {
             setAnimationSortDuration(sortDurationMs / 1000);
-            setSortingIds([...barRevealedIds]);
+            if (settings?.currentTry === 1) {
+                setSortingIds([...barRevealedIds]);
+            } else {
+                setSortedRiderIds([...announcedRiderIds]);
+            }
             await wait(sortDurationMs);
             setActiveHighlightItem(null);
+            setRevealingRiderId(null); // Clear highlight after sort
         }
         else if (eventType === 'reset') {
             setBarRevealedIds([]);
             setDisplayedIds([]);
             setSortingIds([]);
             setAnnouncedRiderIds([]);
+            setSortedRiderIds([]);
             setRevealingRiderId(null);
             if (data?.reloadSettings) {
                 const { data: animData } = await supabase.from('animation_settings').select('*').eq('id', 1).single();
@@ -221,7 +229,7 @@ export default function ResultsPage() {
             }
         }
         isAnimatingRef.current = false;
-    }, [fetchDataSilent, barRevealedIds]);
+    }, [fetchDataSilent, barRevealedIds, announcedRiderIds, settings?.currentTry]);
 
     useEffect(() => {
         fetchDataSilent();
@@ -236,33 +244,66 @@ export default function ResultsPage() {
         return () => { supabase.removeChannel(channel); };
     }, [fetchDataSilent, handleBroadcastEvent]);
 
+    const anyRiderRevealing = revealingRiderId !== null;
+
     const processedRankings = useMemo(() => {
         if (!settings || displayResults.length === 0) return [];
         const enabledItems = settings.evaluationItems.filter(i => i.enabled).sort((a, b) => a.order - b.order);
 
         const items = displayResults.map(res => {
-            const itemBreakdown = enabledItems.map((item, index) => {
-                const sAcross = res.judgeScores.map(js => (js.scores.find(is => is.itemId === item.id)?.score || 0) * item.weight);
-                const avg = sAcross.length ? sAcross.reduce((a, b) => a + b, 0) / sAcross.length : 0;
-                return { id: item.id, name: item.name, score: avg, color: OUTDOOR_COLORS[index % OUTDOOR_COLORS.length], revealed: barRevealedIds.includes(item.id) };
-            });
-            const audienceBreakdown = { id: 'audience', name: 'Audience', score: res.audienceWeightedScore, color: '#f87171', revealed: barRevealedIds.includes('audience') };
-            const allItems = [...itemBreakdown, audienceBreakdown];
+            const getBreakdownForTry = (tryNum: number) => {
+                const tryScores = res.judgeScores.filter(s => s.tryNumber === tryNum);
+                return enabledItems.map((item, index) => {
+                    const sAcross = tryScores.map(js => (js.scores.find(is => is.itemId === item.id)?.score || 0) * item.weight);
+                    const avg = sAcross.length ? sAcross.reduce((a, b) => a + b, 0) / sAcross.length : 0;
+                    return {
+                        id: item.id,
+                        name: item.name,
+                        score: avg,
+                        color: OUTDOOR_COLORS[index % OUTDOOR_COLORS.length],
+                        revealed: settings.currentTry === 1 ? barRevealedIds.includes(item.id) : true
+                    };
+                });
+            };
 
-            // For Try 1 mode: Sum of currently revealed segments
-            const try1RevealedScore = allItems.filter(i => displayedIds.includes(i.id)).reduce((a, b) => a + b.score, 0);
+            const try1Items = getBreakdownForTry(1);
+            const try2Items = getBreakdownForTry(2);
 
-            // For Sorting: Current revealed score if in Try 1, or Best Score if in Try 2
-            const sortingScore = settings.currentTry === 1
-                ? allItems.filter(i => sortingIds.includes(i.id)).reduce((a, b) => a + b.score, 0)
-                : (announcedRiderIds.includes(res.rider.id) ? res.totalScore : res.try1Total);
+            // Audience score is handled separately in this schema but we can include it in breakdowns if needed
+            // For now let's focus on the evaluation items as colorful bars
+            const try1Total = res.try1Total || 0;
+            const try2Total = res.try2Total || 0;
 
             const isRevealing2nd = revealingRiderId === res.rider.id;
             const isAnnounced2nd = announcedRiderIds.includes(res.rider.id);
-            const try1Score = res.try1Total || 0;
-            const try2Score = res.try2Total || 0;
 
-            return { ...res, allItems, try1RevealedScore, sortingScore, try1Score, try2Score, isRevealing2nd, isAnnounced2nd };
+            // For Sorting Score
+            let sortingScore = 0;
+            if (settings.currentTry === 1) {
+                // Sum of currently revealed items in Try 1
+                sortingScore = try1Items.filter(i => sortingIds.includes(i.id)).reduce((a, b) => a + b.score, 0);
+            } else {
+                // For 2nd try ranking: only use best score if rider is in sortedRiderIds
+                sortingScore = sortedRiderIds.includes(res.rider.id) ? res.totalScore : try1Total;
+            }
+
+            const currentRevealedScore = settings.currentTry === 1
+                ? try1Items.filter(i => displayedIds.includes(i.id)).reduce((a, b) => a + b.score, 0)
+                : (isRevealing2nd ? try2Total : (isAnnounced2nd ? res.totalScore : try1Total));
+
+            return {
+                ...res,
+                try1Items,
+                try2Items,
+                try1Total,
+                try2Total,
+                try1Score: try1Total, // Restoring for compatibility if needed elsewhere
+                try2Score: try2Total, // Restoring for compatibility if needed elsewhere
+                isRevealing2nd,
+                isAnnounced2nd,
+                sortingScore,
+                currentRevealedScore
+            };
         });
 
         const sorted = items.sort((a, b) => ((b.sortingScore || 0) - (a.sortingScore || 0)) || (a.rider.displayOrder - b.rider.displayOrder));
@@ -311,6 +352,13 @@ export default function ResultsPage() {
                         <motion.div
                             key={res.rider.id}
                             layout
+                            initial={false}
+                            animate={{
+                                scale: res.isRevealing2nd ? 1.05 : 1,
+                                opacity: (anyRiderRevealing && !res.isRevealing2nd) ? 0.4 : 1,
+                                filter: (anyRiderRevealing && !res.isRevealing2nd) ? 'grayscale(80%)' : 'grayscale(0%)',
+                                zIndex: res.isRevealing2nd ? 50 : 0
+                            }}
                             transition={{ duration: animationSortDuration, ease: "easeInOut" }}
                             className="relative flex items-center gap-4 py-3 bg-zinc-900/60 rounded-xl pr-6 border-l-[16px] shadow-xl"
                             style={{ borderLeftColor: res.calculatedRank === 1 ? '#fffa00' : res.calculatedRank === 2 ? '#e2e8f0' : res.calculatedRank === 3 ? '#b45309' : '#333' }}
@@ -326,7 +374,7 @@ export default function ResultsPage() {
                                 <div className="bg-black/50 h-14 relative overflow-hidden flex rounded-sm">
                                     {settings.currentTry === 1 ? (
                                         // Try 1 Mode: Show segments
-                                        res.allItems.map(item => (
+                                        res.try1Items.map(item => (
                                             <motion.div
                                                 key={item.id}
                                                 animate={{ width: item.revealed ? `${(item.score / maxPoints) * 100}%` : '0%' }}
@@ -336,32 +384,29 @@ export default function ResultsPage() {
                                             />
                                         ))
                                     ) : (
-                                        // Try 2 Mode: Best of Two Flow
-                                        <>
-                                            {/* Base: Try 1 Bar (Blue) */}
-                                            <div className="absolute inset-0 bg-blue-600/40" style={{ width: `${(res.try1Score / maxPoints) * 100}%` }} />
-
-                                            {/* Revelation Animation: Emerald bar grows over Try 1 */}
-                                            {res.isRevealing2nd ? (
-                                                <>
-                                                    <div className="absolute inset-y-0 left-0 bg-blue-600 z-10" style={{ width: `${(res.try1Score / maxPoints) * 100}%` }} />
-                                                    <motion.div
-                                                        initial={{ width: 0 }}
-                                                        animate={{ width: `${(res.try2Score / maxPoints) * 100}%` }}
-                                                        transition={{ duration: animationSettings.bar_transition_speed / 1000, ease: "easeOut" }}
-                                                        className="h-full bg-emerald-400 border-r-8 border-white z-20 shadow-[0_0_40px_rgba(16,185,129,0.8)]"
-                                                    />
-                                                </>
-                                            ) : (
+                                        // Try 2 Mode: Best of Two Flow with colorful bars
+                                        <div className="relative w-full h-full flex">
+                                            {/* Colorful Bar Rendering */}
+                                            {(res.isRevealing2nd ? res.try2Items : (res.isAnnounced2nd && res.try2Total > res.try1Total ? res.try2Items : res.try1Items)).map((item: any) => (
                                                 <motion.div
-                                                    animate={{
-                                                        width: res.isAnnounced2nd ? `${(Math.max(res.try1Score, res.try2Score) / maxPoints) * 100}%` : `${(res.try1Score / maxPoints) * 100}%`,
-                                                        backgroundColor: (res.isAnnounced2nd && res.try2Score > res.try1Score) ? '#10b981' : '#2563eb'
-                                                    }}
-                                                    className="h-full shadow-[inset_0_0_20px_rgba(255,255,255,0.1)]"
+                                                    key={item.id}
+                                                    initial={res.isRevealing2nd ? { width: 0 } : false}
+                                                    animate={{ width: `${(item.score / maxPoints) * 100}%` }}
+                                                    transition={{ duration: animationSettings.bar_transition_speed / 1000 }}
+                                                    style={{ backgroundColor: item.color }}
+                                                    className="h-full"
                                                 />
+                                            ))}
+
+                                            {/* If revealing 2nd, show Try 1 result as a ghosted background or a small indicator?
+                                                Actually, the requirement says "1stランの結果を残しつつ新しく2ndランの結果を描画".
+                                                Let's overlay a marker or ghost bar for Try 1. */}
+                                            {res.isRevealing2nd && (
+                                                <div className="absolute inset-0 border-r-4 border-blue-500/50 pointer-events-none" style={{ width: `${(res.try1Total / maxPoints) * 100}%` }}>
+                                                    <div className="absolute top-0 right-0 bg-blue-500/50 text-[10px] px-1 font-black -translate-y-full">TRY1</div>
+                                                </div>
                                             )}
-                                        </>
+                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -370,11 +415,7 @@ export default function ResultsPage() {
                             <div className="w-48 text-right">
                                 <div className="text-6xl font-black text-[#fffa00] tabular-nums tracking-tighter">
                                     <AnimatedCounter
-                                        value={
-                                            settings.currentTry === 1
-                                                ? res.try1RevealedScore
-                                                : (res.isRevealing2nd ? res.try2Score : (res.isAnnounced2nd ? res.totalScore : res.try1Score))
-                                        }
+                                        value={res.currentRevealedScore}
                                         duration={animationSettings.bar_transition_speed}
                                     />
                                 </div>
