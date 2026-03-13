@@ -191,15 +191,18 @@ export default function ResultsPage() {
             setDisplayedIds(newIds);
             await wait(barMs);
         }
-        else if (eventType === 'reveal_rider_2nd_try') {
+        else if (eventType === 'focus_rider') {
             const { riderId } = data;
-            setRevealingItem(null);
-            await fetchDataSilent();
             setRevealingRiderId(riderId);
             playRevealSound();
-            await wait(barMs + 500);
+        }
+        else if (eventType === 'reveal_try2_score') {
+            const { riderId } = data;
+            await fetchDataSilent();
+            // Start the bar growth animation
             setAnnouncedRiderIds(prev => [...new Set([...prev, riderId])]);
-            // Keep revealingRiderId set until sort_ranks
+            // Still highlighted
+            await wait(barMs + 500);
         }
         else if (eventType === 'sort_ranks') {
             setAnimationSortDuration(sortDurationMs / 1000);
@@ -238,6 +241,8 @@ export default function ResultsPage() {
             .on('broadcast', { event: 'hide_label' }, (p) => handleBroadcastEvent(p))
             .on('broadcast', { event: 'reveal_score' }, (p) => handleBroadcastEvent(p))
             .on('broadcast', { event: 'reveal_rider_2nd_try' }, (p) => handleBroadcastEvent(p))
+            .on('broadcast', { event: 'focus_rider' }, (p) => handleBroadcastEvent(p))
+            .on('broadcast', { event: 'reveal_try2_score' }, (p) => handleBroadcastEvent(p))
             .on('broadcast', { event: 'sort_ranks' }, (p) => handleBroadcastEvent(p))
             .on('broadcast', { event: 'reset' }, (p) => handleBroadcastEvent(p))
             .subscribe();
@@ -384,28 +389,35 @@ export default function ResultsPage() {
                                             />
                                         ))
                                     ) : (
-                                        // Try 2 Mode: Best of Two Flow with colorful bars
-                                        <div className="relative w-full h-full flex">
-                                            {/* Colorful Bar Rendering */}
-                                            {(res.isRevealing2nd ? res.try2Items : (res.isAnnounced2nd && res.try2Total > res.try1Total ? res.try2Items : res.try1Items)).map((item: any) => (
-                                                <motion.div
-                                                    key={item.id}
-                                                    initial={res.isRevealing2nd ? { width: 0 } : false}
-                                                    animate={{ width: `${(item.score / maxPoints) * 100}%` }}
-                                                    transition={{ duration: animationSettings.bar_transition_speed / 1000 }}
-                                                    style={{ backgroundColor: item.color }}
-                                                    className="h-full"
-                                                />
-                                            ))}
-
-                                            {/* If revealing 2nd, show Try 1 result as a ghosted background or a small indicator?
-                                                Actually, the requirement says "1stランの結果を残しつつ新しく2ndランの結果を描画".
-                                                Let's overlay a marker or ghost bar for Try 1. */}
-                                            {res.isRevealing2nd && (
-                                                <div className="absolute inset-0 border-r-4 border-blue-500/50 pointer-events-none" style={{ width: `${(res.try1Total / maxPoints) * 100}%` }}>
-                                                    <div className="absolute top-0 right-0 bg-blue-500/50 text-[10px] px-1 font-black -translate-y-full">TRY1</div>
-                                                </div>
-                                            )}
+                                        // Try 2 Mode: Stacked Bars
+                                        <div className="relative w-full h-20 flex flex-col gap-1 p-1">
+                                            {/* Try 1 Bar (Top) */}
+                                            <div className="flex-1 bg-black/30 rounded-xs overflow-hidden flex relative group">
+                                                <div className="absolute left-1 top-0 text-[10px] font-black opacity-30 z-10">TRY 1</div>
+                                                {res.try1Items.map((item: any) => (
+                                                    <div
+                                                        key={item.id}
+                                                        style={{ width: `${(item.score / maxPoints) * 100}%`, backgroundColor: item.color }}
+                                                        className="h-full opacity-60"
+                                                    />
+                                                ))}
+                                            </div>
+                                            {/* Try 2 Bar (Bottom) */}
+                                            <div className="flex-1 bg-black/30 rounded-xs overflow-hidden flex relative">
+                                                <div className="absolute left-1 top-0 text-[10px] font-black opacity-30 z-10">TRY 2</div>
+                                                {(res.isRevealing2nd || res.isAnnounced2nd) ? (
+                                                    res.try2Items.map((item: any) => (
+                                                        <motion.div
+                                                            key={item.id}
+                                                            initial={res.isRevealing2nd && !res.isAnnounced2nd ? { width: 0 } : false}
+                                                            animate={{ width: `${(item.score / maxPoints) * 100}%` }}
+                                                            transition={{ duration: animationSettings.bar_transition_speed / 1000 }}
+                                                            style={{ backgroundColor: item.color }}
+                                                            className="h-full"
+                                                        />
+                                                    ))
+                                                ) : null}
+                                            </div>
                                         </div>
                                     )}
                                 </div>

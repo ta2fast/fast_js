@@ -95,10 +95,14 @@ export default function ResultsControlPage() {
         import('@/lib/store').then(({ resetRevelations }) => resetRevelations());
     };
 
-    const triggerRevealRider2nd = async (riderId: string, riderName: string) => {
-        sendBroadcast('reveal_rider_2nd_try', { riderId, riderName });
-        setAnnouncedRiderIds(prev => [...new Set([...prev, riderId])]);
 
+    const triggerFocusRider = (riderId: string) => {
+        sendBroadcast('focus_rider', { riderId });
+    };
+
+    const triggerRevealTry2Score = async (riderId: string) => {
+        sendBroadcast('reveal_try2_score', { riderId });
+        setAnnouncedRiderIds(prev => [...new Set([...prev, riderId])]);
         try {
             const { revealRiderTry } = await import('@/lib/store');
             await revealRiderTry(riderId);
@@ -305,14 +309,21 @@ export default function ResultsControlPage() {
                                                 </div>
                                                 <div className="flex gap-2">
                                                     <button
-                                                        onClick={() => triggerRevealRider2nd(rider.id, rider.riderName)}
+                                                        onClick={() => triggerFocusRider(rider.id)}
+                                                        disabled={updating}
+                                                        className="btn btn-sm px-4 h-12 rounded-xl font-bold bg-zinc-100 hover:bg-white text-black"
+                                                    >
+                                                        目立たせる
+                                                    </button>
+                                                    <button
+                                                        onClick={() => triggerRevealTry2Score(rider.id)}
                                                         disabled={updating || isAnnounced}
-                                                        className={`btn btn-sm px-6 h-12 rounded-xl font-bold transition-all ${isAnnounced
+                                                        className={`btn btn-sm px-4 h-12 rounded-xl font-bold transition-all ${isAnnounced
                                                             ? 'bg-zinc-700 text-zinc-500'
                                                             : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.3)]'
                                                             }`}
                                                     >
-                                                        {isAnnounced ? '✅ 発表済み' : '2nd Try 発表！'}
+                                                        {isAnnounced ? '✅ 点数発表済' : '点数発表'}
                                                     </button>
                                                     <button
                                                         onClick={triggerSortRanks}
