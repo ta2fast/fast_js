@@ -236,7 +236,7 @@ export default function ResultsPage() {
                 items.push({
                     id: 'audience',
                     name: 'AUDIENCE',
-                    score: tryNum === 1 ? (res.try1Total ? res.audienceWeightedScore || 0 : 0) : (res.try2Total ? res.audienceWeightedScore || 0 : 0),
+                    score: tryNum === 1 ? (res.try1AudienceScore || 0) : (res.try2AudienceScore || 0),
                     color: '#f87171',
                     revealed: settings.currentTry === 1 ? barRevealedIds.includes('audience') : true
                 });

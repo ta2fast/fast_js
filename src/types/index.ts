@@ -105,6 +105,8 @@ export interface RiderResult {
   audienceWeightedScore: number; // 観客点 × ウエイト
   try1Total?: number;
   try2Total?: number;
+  try1AudienceScore?: number;
+  try2AudienceScore?: number;
   totalScore: number;           // 総合点
   rank: number;
   isFinalized: boolean;         // 確定済みかどうか

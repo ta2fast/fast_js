@@ -62,6 +62,8 @@ export async function GET(): Promise<NextResponse<ApiResponse<RiderResult[]>>> {
                 judgeScores: riderAllJudgeScores, // Keep all for details
                 try1Total,
                 try2Total,
+                try1AudienceScore: calculateAudienceScore(try1AudienceVotes, settings.audienceWeight),
+                try2AudienceScore: calculateAudienceScore(try2AudienceVotes, settings.audienceWeight),
                 judgeAverage: calculateJudgeAverage(riderAllJudgeScores.filter(s => s.totalScore === Math.max(...riderAllJudgeScores.map(sc => sc.totalScore)))), // Contextually we might want avg of best try
                 audienceVotes: riderVotes,
                 audienceAverage: calculateAudienceAverage(bestTotalScore === try2Total ? try2AudienceVotes : try1AudienceVotes) || calculateAudienceAverage(riderVotes), // Contextually use best try's audience votes
