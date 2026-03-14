@@ -220,7 +220,7 @@ export default function ResultsPage() {
         const items = displayResults.map(res => {
             const getBreakdownForTry = (tryNum: number) => {
                 const tryScores = res.judgeScores.filter(s => s.tryNumber === tryNum);
-                return enabledItems.map((item, index) => {
+                const items = enabledItems.map((item, index) => {
                     const sAcross = tryScores.map(js => (js.scores.find(is => is.itemId === item.id)?.score || 0) * item.weight);
                     const avg = sAcross.length ? sAcross.reduce((a, b) => a + b, 0) / sAcross.length : 0;
                     return {
@@ -231,6 +231,16 @@ export default function ResultsPage() {
                         revealed: settings.currentTry === 1 ? barRevealedIds.includes(item.id) : true
                     };
                 });
+
+                // Add virtual audience item
+                items.push({
+                    id: 'audience',
+                    name: 'AUDIENCE',
+                    score: tryNum === 1 ? (res.audienceWeightedScore || 0) : 0, // In this model audience score is shared or try1 only, but let's keep it try-independent if needed
+                    color: '#f87171',
+                    revealed: settings.currentTry === 1 ? barRevealedIds.includes('audience') : true
+                });
+                return items;
             };
 
             const try1Items = getBreakdownForTry(1);
@@ -306,6 +316,13 @@ export default function ResultsPage() {
                         <span className="text-xs font-black">{item.name}</span>
                     </div>
                 ))}
+                {/* Always show Audience in legend if weighted */}
+                {settings.audienceWeight > 0 && (
+                    <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded-sm bg-[#f87171]" />
+                        <span className="text-xs font-black">AUDIENCE</span>
+                    </div>
+                )}
             </div>
 
             <div className="flex-1 flex flex-col gap-3 min-h-0">
