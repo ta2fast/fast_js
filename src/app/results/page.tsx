@@ -294,7 +294,7 @@ export default function ResultsPage() {
 
             const currentRevealedScore = settings.currentTry === 1
                 ? try1Items.filter(i => displayedIds.includes(i.id)).reduce((a, b) => a + b.score, 0)
-                : (isRevealing2nd ? try2Total : (isAnnounced2nd ? res.totalScore : try1Total));
+                : (isAnnounced2nd ? res.totalScore : try1Total);
 
             return {
                 ...res,
@@ -376,10 +376,10 @@ export default function ResultsPage() {
 
                             {/* Main Bar Section */}
                             <div className="flex-1">
-                                <div className="bg-black/50 h-14 relative overflow-hidden flex rounded-sm">
-                                    {settings.currentTry === 1 ? (
-                                        // Try 1 Mode: Show segments
-                                        res.try1Items.map(item => (
+                                {settings.currentTry === 1 ? (
+                                    // Try 1 Mode: Show segments
+                                    <div className="bg-black/50 h-10 relative overflow-hidden flex rounded-sm">
+                                        {res.try1Items.map((item: any) => (
                                             <motion.div
                                                 key={item.id}
                                                 animate={{ width: item.revealed ? `${(item.score / maxPoints) * 100}%` : '0%' }}
@@ -387,40 +387,36 @@ export default function ResultsPage() {
                                                 style={{ backgroundColor: item.color }}
                                                 className="h-full"
                                             />
-                                        ))
-                                    ) : (
-                                        // Try 2 Mode: Stacked Bars
-                                        <div className="relative w-full h-20 flex flex-col gap-1 p-1">
-                                            {/* Try 1 Bar (Top) */}
-                                            <div className="flex-1 bg-black/30 rounded-xs overflow-hidden flex relative group">
-                                                <div className="absolute left-1 top-0 text-[10px] font-black opacity-30 z-10">TRY 1</div>
-                                                {res.try1Items.map((item: any) => (
-                                                    <div
-                                                        key={item.id}
-                                                        style={{ width: `${(item.score / maxPoints) * 100}%`, backgroundColor: item.color }}
-                                                        className="h-full opacity-60"
-                                                    />
-                                                ))}
-                                            </div>
-                                            {/* Try 2 Bar (Bottom) */}
-                                            <div className="flex-1 bg-black/30 rounded-xs overflow-hidden flex relative">
-                                                <div className="absolute left-1 top-0 text-[10px] font-black opacity-30 z-10">TRY 2</div>
-                                                {(res.isRevealing2nd || res.isAnnounced2nd) ? (
-                                                    res.try2Items.map((item: any) => (
-                                                        <motion.div
-                                                            key={item.id}
-                                                            initial={res.isRevealing2nd && !res.isAnnounced2nd ? { width: 0 } : false}
-                                                            animate={{ width: `${(item.score / maxPoints) * 100}%` }}
-                                                            transition={{ duration: animationSettings.bar_transition_speed / 1000 }}
-                                                            style={{ backgroundColor: item.color }}
-                                                            className="h-full"
-                                                        />
-                                                    ))
-                                                ) : null}
-                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    // Try 2 Mode: Stacked Bars
+                                    <div className="w-full flex flex-col gap-2">
+                                        {/* Try 1 Bar (Top) */}
+                                        <div className="bg-black/30 h-10 relative overflow-hidden flex rounded-sm">
+                                            {res.try1Items.map((item: any) => (
+                                                <div
+                                                    key={item.id}
+                                                    style={{ width: `${(item.score / maxPoints) * 100}%`, backgroundColor: item.color }}
+                                                    className="h-full opacity-60"
+                                                />
+                                            ))}
                                         </div>
-                                    )}
-                                </div>
+                                        {/* Try 2 Bar (Bottom) */}
+                                        <div className="bg-black/30 h-10 relative overflow-hidden flex rounded-sm">
+                                            {res.isAnnounced2nd && res.try2Items.map((item: any) => (
+                                                <motion.div
+                                                    key={item.id}
+                                                    initial={{ width: 0 }}
+                                                    animate={{ width: `${(item.score / maxPoints) * 100}%` }}
+                                                    transition={{ duration: animationSettings.bar_transition_speed / 1000 }}
+                                                    style={{ backgroundColor: item.color }}
+                                                    className="h-full"
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Score Display */}
