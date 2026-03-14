@@ -109,8 +109,6 @@ export default function ResultsPage() {
             const currentResults = json.data as RiderResult[];
             latestResultsRef.current = currentResults;
             setAnnouncedRiderIds(currentAnnounced);
-            // If we are in try 2 and some are announced, they might already be sorted in the DB/Logic
-            // but for animation stability, we track them separately in sortedRiderIds
             if (initialLoadDone.current && (settingsData?.current_try ?? 1) === 2) {
                 // Keep sortedIds in sync with announced unless we are in the middle of a reveal
             }
@@ -261,13 +259,16 @@ export default function ResultsPage() {
                 // Sum of currently revealed items in Try 1
                 sortingScore = try1Items.filter(i => sortingIds.includes(i.id)).reduce((a, b) => a + b.score, 0);
             } else {
-                // For 2nd try ranking: only use best score if rider is in sortedRiderIds
-                sortingScore = sortedRiderIds.includes(res.rider.id) ? res.totalScore : try1Total;
+                // For 2nd try ranking:
+                // If a rider's 2nd try score is announced & sorted, use their best score.
+                // Otherwise, fall back to their Try 1 total so they maintain their Try 1 rank initially.
+                // Note: Even if you are not announced, `try1Total` preserves your existing ranking correctly.
+                sortingScore = sortedRiderIds.includes(res.rider.id) ? Math.max(try1Total, try2Total) : try1Total;
             }
 
             const currentRevealedScore = settings.currentTry === 1
                 ? try1Items.filter(i => displayedIds.includes(i.id)).reduce((a, b) => a + b.score, 0)
-                : (isAnnounced2nd ? res.totalScore : try1Total);
+                : (isAnnounced2nd ? Math.max(try1Total, try2Total) : try1Total);
 
             return {
                 ...res,
