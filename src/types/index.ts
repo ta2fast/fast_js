@@ -61,7 +61,6 @@ export interface ContestSettings {
   audienceMinScore: number;     // 観客投票の最小点数
   audienceMaxScore: number;     // 観客投票の最大点数
   votingEnabled: boolean;       // 投票開始/終了フラグ
-  votingDeadlineSeconds: number; // ラン終了後の投票可能秒数
   allowVoteModification: boolean; // 投票変更を許可するか
   modificationWindowSeconds: number; // 変更可能な秒数（例：10秒）
   currentRiderId: string | null; // 現在パフォーマンス中の選手
@@ -114,8 +113,6 @@ export interface RiderResult {
 export interface VotingState {
   isOpen: boolean;
   currentRiderId: string | null;
-  deadlineTimestamp: string | null;
-  remainingSeconds: number;
 }
 
 // ジャッジ情報
@@ -167,7 +164,6 @@ export const DEFAULT_CONTEST_SETTINGS: ContestSettings = {
   audienceMinScore: 1,
   audienceMaxScore: 5,
   votingEnabled: false,
-  votingDeadlineSeconds: 30,
   allowVoteModification: true,
   modificationWindowSeconds: 10,
   currentRiderId: null,

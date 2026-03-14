@@ -249,20 +249,6 @@ export default function SettingsPage() {
                                 </select>
                             </div>
                         </div>
-                        <div>
-                            <label className="block text-sm text-[var(--text-muted)] mb-2">
-                                投票締切秒数
-                            </label>
-                            <select
-                                value={settings.votingDeadlineSeconds}
-                                onChange={e => saveSettings({ votingDeadlineSeconds: parseInt(e.target.value) })}
-                                className="input"
-                            >
-                                {[10, 20, 30, 45, 60, 90, 120, 180, 240, 300].map(sec => (
-                                    <option key={sec} value={sec}>{sec}秒</option>
-                                ))}
-                            </select>
-                        </div>
                         <div className="flex items-center gap-3">
                             <input
                                 type="checkbox"
