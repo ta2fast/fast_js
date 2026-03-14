@@ -385,6 +385,7 @@ export async function getAudienceVotes(): Promise<AudienceVote[]> {
     return (data || []).map(row => ({
         id: row.id,
         riderId: row.rider_id,
+        tryNumber: row.try_number || 1,
         score: row.score,
         deviceId: row.device_id,
         ip: row.ip,
@@ -405,6 +406,7 @@ export async function getAudienceVotesForRider(riderId: string): Promise<Audienc
     return (data || []).map(row => ({
         id: row.id,
         riderId: row.rider_id,
+        tryNumber: row.try_number || 1,
         score: row.score,
         deviceId: row.device_id,
         ip: row.ip,
@@ -414,24 +416,26 @@ export async function getAudienceVotesForRider(riderId: string): Promise<Audienc
     }));
 }
 
-export async function hasDeviceVoted(deviceId: string, riderId: string): Promise<boolean> {
+export async function hasDeviceVoted(deviceId: string, riderId: string, tryNumber: number): Promise<boolean> {
     const { data, error } = await supabase
         .from('audience_votes')
         .select('id')
         .eq('device_id', deviceId)
         .eq('rider_id', riderId)
+        .eq('try_number', tryNumber)
         .maybeSingle();
 
     if (error) throw error;
     return data !== null;
 }
 
-export async function getDeviceVote(deviceId: string, riderId: string): Promise<AudienceVote | undefined> {
+export async function getDeviceVote(deviceId: string, riderId: string, tryNumber: number): Promise<AudienceVote | undefined> {
     const { data, error } = await supabase
         .from('audience_votes')
         .select('*')
         .eq('device_id', deviceId)
         .eq('rider_id', riderId)
+        .eq('try_number', tryNumber)
         .maybeSingle();
 
     if (error) throw error;
@@ -439,6 +443,7 @@ export async function getDeviceVote(deviceId: string, riderId: string): Promise<
     return {
         id: data.id,
         riderId: data.rider_id,
+        tryNumber: data.try_number || 1,
         score: data.score,
         deviceId: data.device_id,
         ip: data.ip,
@@ -460,8 +465,10 @@ export async function submitAudienceVote(vote: Omit<AudienceVote, 'id' | 'timest
         throw new Error('現在、この選手への投票は受け付けていません');
     }
 
+    const tryNumber = vote.tryNumber || settings.currentTry;
+
     // Check if already voted
-    const existing = await getDeviceVote(vote.deviceId, vote.riderId);
+    const existing = await getDeviceVote(vote.deviceId, vote.riderId, tryNumber);
     if (existing) {
         throw new Error('既に投票済みです');
     }
@@ -469,6 +476,7 @@ export async function submitAudienceVote(vote: Omit<AudienceVote, 'id' | 'timest
     const newVote = {
         id: generateId('vote'),
         rider_id: vote.riderId,
+        try_number: tryNumber,
         score: vote.score,
         device_id: vote.deviceId,
         ip: vote.ip,
@@ -487,6 +495,7 @@ export async function submitAudienceVote(vote: Omit<AudienceVote, 'id' | 'timest
     return {
         id: data.id,
         riderId: data.rider_id,
+        tryNumber: data.try_number,
         score: data.score,
         deviceId: data.device_id,
         ip: data.ip,

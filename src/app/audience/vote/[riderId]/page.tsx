@@ -47,6 +47,11 @@ export default function VotePage() {
                     router.replace('/audience');
                     return;
                 }
+                
+                // Check if already voted for this try
+                if (hasVotedForRider(riderId, s.currentTry)) {
+                    setSubmitted(true);
+                }
             }
 
             if (ridersData.success) {
@@ -69,9 +74,6 @@ export default function VotePage() {
             const id = await generateDeviceId();
             if (isMounted.current) {
                 setDeviceId(id);
-                if (hasVotedForRider(riderId)) {
-                    setSubmitted(true);
-                }
             }
             fetchData();
         }
@@ -111,7 +113,7 @@ export default function VotePage() {
             if (!isMounted.current) return;
 
             if (data.success) {
-                recordVote(rider.id, selectedScore);
+                recordVote(rider.id, settings?.currentTry || 1, selectedScore);
                 setSubmitted(true);
             } else {
                 setError(data.error || '投票に失敗しました');

@@ -36,14 +36,19 @@ export async function GET(): Promise<NextResponse<ApiResponse<RiderResult[]>>> {
             const try1JudgeScores = riderAllJudgeScores.filter(s => s.tryNumber === 1);
             const try2JudgeScores = riderAllJudgeScores.filter(s => s.tryNumber === 2);
 
-            const calculateTryScore = (jScores: typeof riderAllJudgeScores) => {
-                const judgeAvg = calculateJudgeAverage(jScores);
-                const audienceWeighted = calculateAudienceScore(riderVotes, settings.audienceWeight);
-                return calculateTotalScore(judgeAvg, audienceWeighted);
-            };
+            // Group audience votes by try number
+            const try1AudienceVotes = riderVotes.filter(v => v.tryNumber === 1);
+            const try2AudienceVotes = riderVotes.filter(v => v.tryNumber === 2);
 
-            const try1Total = calculateTryScore(try1JudgeScores);
-            const try2Total = calculateTryScore(try2JudgeScores);
+            const try1Total = calculateTotalScore(
+                calculateJudgeAverage(try1JudgeScores),
+                calculateAudienceScore(try1AudienceVotes, settings.audienceWeight)
+            );
+            
+            const try2Total = calculateTotalScore(
+                calculateJudgeAverage(try2JudgeScores),
+                calculateAudienceScore(try2AudienceVotes, settings.audienceWeight)
+            );
 
             // Best score logic
             const bestTotalScore = Math.max(try1Total, try2Total);
@@ -59,8 +64,8 @@ export async function GET(): Promise<NextResponse<ApiResponse<RiderResult[]>>> {
                 try2Total,
                 judgeAverage: calculateJudgeAverage(riderAllJudgeScores.filter(s => s.totalScore === Math.max(...riderAllJudgeScores.map(sc => sc.totalScore)))), // Contextually we might want avg of best try
                 audienceVotes: riderVotes,
-                audienceAverage,
-                audienceWeightedScore,
+                audienceAverage: calculateAudienceAverage(bestTotalScore === try2Total ? try2AudienceVotes : try1AudienceVotes) || calculateAudienceAverage(riderVotes), // Contextually use best try's audience votes
+                audienceWeightedScore: calculateAudienceScore(bestTotalScore === try2Total ? try2AudienceVotes : try1AudienceVotes, settings.audienceWeight),
                 totalScore: bestTotalScore,
                 rank: 0,
                 isFinalized: false,

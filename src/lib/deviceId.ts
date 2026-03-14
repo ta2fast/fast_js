@@ -174,11 +174,11 @@ export async function generateDeviceId(): Promise<string> {
 /**
  * 投票済みかどうかをチェック
  */
-export function hasVotedForRider(riderId: string): boolean {
+export function hasVotedForRider(riderId: string, tryNumber: number): boolean {
     if (typeof window === 'undefined') return false;
     try {
         const votes = JSON.parse(localStorage.getItem('bmx_votes') || '{}');
-        return !!votes[riderId];
+        return !!votes[`${riderId}_${tryNumber}`];
     } catch {
         return false;
     }
@@ -187,11 +187,11 @@ export function hasVotedForRider(riderId: string): boolean {
 /**
  * 投票を記録
  */
-export function recordVote(riderId: string, score: number): void {
+export function recordVote(riderId: string, tryNumber: number, score: number): void {
     if (typeof window === 'undefined') return;
     try {
         const votes = JSON.parse(localStorage.getItem('bmx_votes') || '{}');
-        votes[riderId] = { score, timestamp: Date.now() };
+        votes[`${riderId}_${tryNumber}`] = { score, timestamp: Date.now() };
         localStorage.setItem('bmx_votes', JSON.stringify(votes));
     } catch {
         // 無視
@@ -201,11 +201,11 @@ export function recordVote(riderId: string, score: number): void {
 /**
  * 投票記録を取得
  */
-export function getVoteRecord(riderId: string): { score: number; timestamp: number } | null {
+export function getVoteRecord(riderId: string, tryNumber: number): { score: number; timestamp: number } | null {
     if (typeof window === 'undefined') return null;
     try {
         const votes = JSON.parse(localStorage.getItem('bmx_votes') || '{}');
-        return votes[riderId] || null;
+        return votes[`${riderId}_${tryNumber}`] || null;
     } catch {
         return null;
     }
@@ -214,8 +214,8 @@ export function getVoteRecord(riderId: string): { score: number; timestamp: numb
 /**
  * 変更可能期限内かをチェック
  */
-export function canModifyVote(riderId: string, windowSeconds: number): boolean {
-    const record = getVoteRecord(riderId);
+export function canModifyVote(riderId: string, tryNumber: number, windowSeconds: number): boolean {
+    const record = getVoteRecord(riderId, tryNumber);
     if (!record) return false;
 
     const elapsed = (Date.now() - record.timestamp) / 1000;

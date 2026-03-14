@@ -64,7 +64,7 @@ export default function AudiencePage() {
                 } else {
                     // Check for rider transition or first load
                     if (prevRiderId.current !== riderInfo.id) {
-                        const record = getVoteRecord(riderInfo.id);
+                        const record = getVoteRecord(riderInfo.id, newSettings.currentTry);
                         if (record) {
                             setStage(ViewStage.COMPLETED);
                             setVotedScore(record.score);
@@ -76,7 +76,7 @@ export default function AudiencePage() {
                         prevRiderId.current = riderInfo.id;
                     } else {
                         // Rider is the same. Just check if a vote record appeared (maybe from another tab)
-                        const record = getVoteRecord(riderInfo.id);
+                        const record = getVoteRecord(riderInfo.id, newSettings.currentTry);
                         if (record && stage !== ViewStage.VOTING) {
                             setStage(ViewStage.COMPLETED);
                             setVotedScore(record.score);
@@ -139,7 +139,7 @@ export default function AudiencePage() {
             if (!isMounted.current) return;
 
             if (data.success) {
-                recordVote(currentRider.id, selectedScore);
+                recordVote(currentRider.id, settings?.currentTry || 1, selectedScore);
                 setStage(ViewStage.COMPLETED);
                 setVotedScore(selectedScore);
             } else {

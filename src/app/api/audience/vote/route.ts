@@ -22,8 +22,9 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
 
         // 特定の端末が投票済みか確認
         if (deviceId && riderId) {
-            const hasVoted = await hasDeviceVoted(deviceId, riderId);
-            const vote = hasVoted ? await getDeviceVote(deviceId, riderId) : undefined;
+            const settings = await getSettings();
+            const hasVoted = await hasDeviceVoted(deviceId, riderId, settings.currentTry);
+            const vote = hasVoted ? await getDeviceVote(deviceId, riderId, settings.currentTry) : undefined;
             return NextResponse.json({
                 success: true,
                 data: { hasVoted, vote }
@@ -85,6 +86,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
 
         const vote = await submitAudienceVote({
             riderId,
+            tryNumber: settings.currentTry,
             score,
             deviceId,
             ip,

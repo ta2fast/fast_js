@@ -45,6 +45,7 @@ export interface JudgeScore {
 export interface AudienceVote {
   id: string;
   riderId: string;
+  tryNumber: number;      // 1 or 2
   score: number;          // 1-5点
   deviceId: string;       // 端末ID（フィンガープリント）
   ip: string;
