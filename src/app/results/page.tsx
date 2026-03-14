@@ -70,7 +70,6 @@ export default function ResultsPage() {
     const [displayResults, setDisplayResults] = useState<RiderResult[]>([]);
     const [settings, setSettings] = useState<ContestSettings | null>(null);
     const [loading, setLoading] = useState(true);
-    const [audioEnabled, setAudioEnabled] = useState(false);
     const [revealingItem, setRevealingItem] = useState<string | null>(null);
     const [activeHighlightItem, setActiveHighlightItem] = useState<string | null>(null);
     const [barRevealedIds, setBarRevealedIds] = useState<string[]>([]);
@@ -85,43 +84,8 @@ export default function ResultsPage() {
     const animationSettingsRef = useRef(DEFAULT_ANIMATION_SETTINGS);
     const isAnimatingRef = useRef(false);
     const initialLoadDone = useRef(false);
-    const audioContextRef = useRef<AudioContext | null>(null);
 
-    const playRevealSound = () => {
-        if (!audioEnabled) return;
-        try {
-            if (!audioContextRef.current) {
-                const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-                audioContextRef.current = new AudioContextClass();
-            }
-            const ctx = audioContextRef.current;
-            if (ctx.state === 'suspended') ctx.resume();
-            const now = ctx.currentTime;
-            const playTone = (freq: number, start: number, dur: number, vol: number) => {
-                const osc = ctx.createOscillator();
-                const g = ctx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(freq, start);
-                osc.frequency.exponentialRampToValueAtTime(freq * 1.5, start + dur);
-                g.gain.setValueAtTime(0, start);
-                g.gain.linearRampToValueAtTime(vol, start + 0.02);
-                g.gain.exponentialRampToValueAtTime(0.001, start + dur);
-                osc.connect(g);
-                g.connect(ctx.destination);
-                osc.start(start);
-                osc.stop(start + dur);
-            };
-            playTone(880, now, 0.6, 0.1);
-            playTone(1108, now + 0.05, 0.5, 0.07);
-        } catch (e) { }
-    };
 
-    const enableAudio = () => {
-        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-        const ctx = new AudioContextClass();
-        audioContextRef.current = ctx;
-        ctx.resume().then(() => setAudioEnabled(true));
-    };
 
     const [sortedRiderIds, setSortedRiderIds] = useState<string[]>([]);
 
@@ -176,7 +140,6 @@ export default function ResultsPage() {
 
         if (eventType === 'show_label') {
             const { itemName } = data;
-            playRevealSound();
             setActiveHighlightItem(itemName);
             setRevealingItem(itemName);
         }
@@ -194,7 +157,6 @@ export default function ResultsPage() {
         else if (eventType === 'focus_rider') {
             const { riderId } = data;
             setRevealingRiderId(riderId);
-            playRevealSound();
         }
         else if (eventType === 'reveal_try2_score') {
             const { riderId } = data;
@@ -327,13 +289,6 @@ export default function ResultsPage() {
 
     return (
         <div className="h-screen w-screen bg-black text-white p-4 uppercase overflow-hidden flex flex-col relative font-sans">
-            <AnimatePresence>
-                {!audioEnabled && (
-                    <motion.div exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black flex items-center justify-center cursor-pointer" onClick={enableAudio}>
-                        <div className="bg-[#fffa00] text-black px-12 py-6 rounded-full text-3xl font-black shadow-[0_0_50px_#fffa00]">CLICK TO START</div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
 
             <AnimatePresence mode="wait">
                 {revealingItem && (
