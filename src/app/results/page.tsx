@@ -281,6 +281,7 @@ export default function ResultsPage() {
 
             const isRevealing2nd = revealingRiderId === res.rider.id;
             const isAnnounced2nd = announcedRiderIds.includes(res.rider.id);
+            const isSorted = settings.currentTry === 1 ? sortingIds.includes(res.rider.id) : sortedRiderIds.includes(res.rider.id);
 
             // For Sorting Score
             let sortingScore = 0;
@@ -306,6 +307,7 @@ export default function ResultsPage() {
                 try2Score: try2Total, // Restoring for compatibility if needed elsewhere
                 isRevealing2nd,
                 isAnnounced2nd,
+                isSorted,
                 sortingScore,
                 currentRevealedScore
             };
@@ -360,8 +362,8 @@ export default function ResultsPage() {
                             initial={false}
                             animate={{
                                 scale: res.isRevealing2nd ? 1.05 : 1,
-                                opacity: (anyRiderRevealing && !res.isRevealing2nd) ? 0.4 : 1,
-                                filter: (anyRiderRevealing && !res.isRevealing2nd) ? 'grayscale(80%)' : 'grayscale(0%)',
+                                opacity: 1,
+                                filter: 'grayscale(0%)',
                                 zIndex: res.isRevealing2nd ? 50 : 0
                             }}
                             transition={{ duration: animationSortDuration, ease: "easeInOut" }}
@@ -391,30 +393,46 @@ export default function ResultsPage() {
                                     </div>
                                 ) : (
                                     // Try 2 Mode: Stacked Bars
-                                    <div className="w-full flex flex-col gap-2">
+                                    <div className="w-full flex flex-col">
                                         {/* Try 1 Bar (Top) */}
-                                        <div className="bg-black/30 h-10 relative overflow-hidden flex rounded-sm">
+                                        <motion.div
+                                            initial={false}
+                                            animate={{
+                                                height: (res.isSorted && res.try2Total > res.try1Total) ? 0 : 40,
+                                                opacity: (res.isSorted && res.try2Total > res.try1Total) ? 0 : (res.isSorted ? 1 : 0.6),
+                                                marginBottom: res.isSorted ? 0 : 8
+                                            }}
+                                            transition={{ duration: 0.5 }}
+                                            className="bg-black/30 w-full relative overflow-hidden flex rounded-sm shrink-0"
+                                        >
                                             {res.try1Items.map((item: any) => (
                                                 <div
                                                     key={item.id}
                                                     style={{ width: `${(item.score / maxPoints) * 100}%`, backgroundColor: item.color }}
-                                                    className="h-full opacity-60"
+                                                    className="h-full"
                                                 />
                                             ))}
-                                        </div>
+                                        </motion.div>
                                         {/* Try 2 Bar (Bottom) */}
-                                        <div className="bg-black/30 h-10 relative overflow-hidden flex rounded-sm">
-                                            {res.isAnnounced2nd && res.try2Items.map((item: any) => (
+                                        <motion.div
+                                            initial={false}
+                                            animate={{
+                                                height: (res.isSorted && res.try1Total >= res.try2Total) ? 0 : 40,
+                                                opacity: (res.isSorted && res.try1Total >= res.try2Total) ? 0 : 1
+                                            }}
+                                            transition={{ duration: 0.5 }}
+                                            className="bg-black/30 w-full relative overflow-hidden flex rounded-sm shrink-0"
+                                        >
+                                            {res.try2Items.map((item: any) => (
                                                 <motion.div
                                                     key={item.id}
-                                                    initial={{ width: 0 }}
-                                                    animate={{ width: `${(item.score / maxPoints) * 100}%` }}
-                                                    transition={{ duration: animationSettings.bar_transition_speed / 1000 }}
+                                                    animate={{ width: res.isAnnounced2nd ? `${(item.score / maxPoints) * 100}%` : '0%' }}
+                                                    transition={{ duration: animationSettings.bar_transition_speed / 1000, ease: "easeInOut" }}
                                                     style={{ backgroundColor: item.color }}
                                                     className="h-full"
                                                 />
                                             ))}
-                                        </div>
+                                        </motion.div>
                                     </div>
                                 )}
                             </div>
