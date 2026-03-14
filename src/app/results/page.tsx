@@ -359,8 +359,14 @@ export default function ResultsPage() {
                                                 animate={{ width: item.revealed ? `${(item.score / maxPoints) * 100}%` : '0%' }}
                                                 transition={{ duration: animationSettings.bar_transition_speed / 1000 }}
                                                 style={{ backgroundColor: item.color }}
-                                                className="h-full"
-                                            />
+                                                className="h-full flex items-center justify-center overflow-hidden"
+                                            >
+                                                {item.revealed && item.score > 0 && (
+                                                    <span className="text-[10px] md:text-sm font-black text-white/90 drop-shadow-sm whitespace-nowrap px-0.5">
+                                                        {item.score.toFixed(1)}
+                                                    </span>
+                                                )}
+                                            </motion.div>
                                         ))}
                                     </div>
                                 ) : (
@@ -380,8 +386,14 @@ export default function ResultsPage() {
                                                 <div
                                                     key={item.id}
                                                     style={{ width: `${(item.score / maxPoints) * 100}%`, backgroundColor: item.color }}
-                                                    className="h-full"
-                                                />
+                                                    className="h-full flex items-center justify-center overflow-hidden"
+                                                >
+                                                    {item.score > 0 && (
+                                                        <span className="text-[8px] md:text-[10px] font-black text-white/80 whitespace-nowrap px-0.5">
+                                                            {item.score.toFixed(1)}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             ))}
                                         </motion.div>
                                         {/* Try 2 Bar (Bottom) */}
@@ -400,8 +412,14 @@ export default function ResultsPage() {
                                                     animate={{ width: res.isAnnounced2nd ? `${(item.score / maxPoints) * 100}%` : '0%' }}
                                                     transition={{ duration: animationSettings.bar_transition_speed / 1000, ease: "easeInOut" }}
                                                     style={{ backgroundColor: item.color }}
-                                                    className="h-full"
-                                                />
+                                                    className="h-full flex items-center justify-center overflow-hidden"
+                                                >
+                                                    {res.isAnnounced2nd && item.score > 0 && (
+                                                        <span className="text-[8px] md:text-[10px] font-black text-white/90 whitespace-nowrap px-0.5">
+                                                            {item.score.toFixed(1)}
+                                                        </span>
+                                                    )}
+                                                </motion.div>
                                             ))}
                                         </motion.div>
                                     </div>
