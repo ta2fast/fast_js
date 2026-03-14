@@ -317,8 +317,8 @@ export default function ResultsPage() {
                             initial={false}
                             animate={{
                                 scale: res.isRevealing2nd ? 1.05 : 1,
-                                opacity: 1,
-                                filter: 'grayscale(0%)',
+                                opacity: anyRiderRevealing && !res.isRevealing2nd ? 0.4 : 1,
+                                filter: anyRiderRevealing && !res.isRevealing2nd ? 'grayscale(100%) contrast(0.8)' : 'grayscale(0%) contrast(1)',
                                 zIndex: res.isRevealing2nd ? 50 : 0
                             }}
                             transition={{ duration: animationSortDuration, ease: "easeInOut" }}
