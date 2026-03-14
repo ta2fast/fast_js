@@ -236,7 +236,7 @@ export default function ResultsPage() {
                 items.push({
                     id: 'audience',
                     name: 'AUDIENCE',
-                    score: tryNum === 1 ? (res.audienceWeightedScore || 0) : 0, // In this model audience score is shared or try1 only, but let's keep it try-independent if needed
+                    score: tryNum === 1 ? (res.try1Total ? res.audienceWeightedScore || 0 : 0) : (res.try2Total ? res.audienceWeightedScore || 0 : 0),
                     color: '#f87171',
                     revealed: settings.currentTry === 1 ? barRevealedIds.includes('audience') : true
                 });
@@ -362,7 +362,7 @@ export default function ResultsPage() {
                                                 className="h-full flex items-center justify-center overflow-hidden"
                                             >
                                                 {item.revealed && item.score > 0 && (
-                                                    <span className="text-[10px] md:text-sm font-black text-white/90 drop-shadow-sm whitespace-nowrap px-0.5">
+                                                    <span className="text-[10px] md:text-sm font-black text-black drop-shadow-[0_2px_2px_rgba(255,255,255,0.8)] whitespace-nowrap px-0.5">
                                                         {item.score.toFixed(1)}
                                                     </span>
                                                 )}
@@ -389,7 +389,7 @@ export default function ResultsPage() {
                                                     className="h-full flex items-center justify-center overflow-hidden"
                                                 >
                                                     {item.score > 0 && (
-                                                        <span className="text-[8px] md:text-[10px] font-black text-white/80 whitespace-nowrap px-0.5">
+                                                        <span className="text-[8px] md:text-[10px] font-black text-black drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] whitespace-nowrap px-0.5">
                                                             {item.score.toFixed(1)}
                                                         </span>
                                                     )}
@@ -415,7 +415,7 @@ export default function ResultsPage() {
                                                     className="h-full flex items-center justify-center overflow-hidden"
                                                 >
                                                     {res.isAnnounced2nd && item.score > 0 && (
-                                                        <span className="text-[8px] md:text-[10px] font-black text-white/90 whitespace-nowrap px-0.5">
+                                                        <span className="text-[8px] md:text-[10px] font-black text-black drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] whitespace-nowrap px-0.5">
                                                             {item.score.toFixed(1)}
                                                         </span>
                                                     )}
