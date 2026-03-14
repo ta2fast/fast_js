@@ -393,14 +393,13 @@ export default function ResultsPage() {
                                     </div>
                                 ) : (
                                     // Try 2 Mode: Stacked Bars
-                                    <div className="w-full flex flex-col">
+                                    <div className="w-full flex flex-col h-10 justify-center gap-0.5">
                                         {/* Try 1 Bar (Top) */}
                                         <motion.div
                                             initial={false}
                                             animate={{
-                                                height: (res.isSorted && res.try2Total > res.try1Total) ? 0 : 40,
+                                                height: (res.isSorted && res.try2Total > res.try1Total) ? 0 : (res.isSorted ? 40 : 20),
                                                 opacity: (res.isSorted && res.try2Total > res.try1Total) ? 0 : (res.isSorted ? 1 : 0.6),
-                                                marginBottom: res.isSorted ? 0 : 8
                                             }}
                                             transition={{ duration: 0.5 }}
                                             className="bg-black/30 w-full relative overflow-hidden flex rounded-sm shrink-0"
@@ -417,7 +416,7 @@ export default function ResultsPage() {
                                         <motion.div
                                             initial={false}
                                             animate={{
-                                                height: (res.isSorted && res.try1Total >= res.try2Total) ? 0 : 40,
+                                                height: (res.isSorted && res.try1Total >= res.try2Total) ? 0 : (res.isSorted ? 40 : 20),
                                                 opacity: (res.isSorted && res.try1Total >= res.try2Total) ? 0 : 1
                                             }}
                                             transition={{ duration: 0.5 }}
