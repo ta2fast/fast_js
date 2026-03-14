@@ -26,6 +26,7 @@ const OUTDOOR_COLORS = [
 const DEFAULT_ANIMATION_SETTINGS = {
     label_display_time: 3000,
     bar_transition_speed: 2000,
+    bar_transition_speed_try2: 3000,
     sort_delay_time: 3000,
     sort_transition_speed: 1500,
     animation_style: 'Pop-in',
@@ -134,6 +135,7 @@ export default function ResultsPage() {
         const eventType = payload.event;
         const data = payload.payload;
         const barMs = animationSettingsRef.current.bar_transition_speed;
+        const barMsTry2 = animationSettingsRef.current.bar_transition_speed_try2;
         const sortDurationMs = animationSettingsRef.current.sort_transition_speed;
 
         if (eventType === 'show_label') {
@@ -162,7 +164,7 @@ export default function ResultsPage() {
             // Start the bar growth animation
             setAnnouncedRiderIds(prev => [...new Set([...prev, riderId])]);
             // Still highlighted
-            await wait(barMs + 500);
+            await wait(barMsTry2 + 500);
         }
         else if (eventType === 'sort_ranks') {
             setAnimationSortDuration(sortDurationMs / 1000);
@@ -411,7 +413,7 @@ export default function ResultsPage() {
                                                 <motion.div
                                                     key={item.id}
                                                     animate={{ width: res.isAnnounced2nd ? `${(item.score / maxPoints) * 100}%` : '0%' }}
-                                                    transition={{ duration: animationSettings.bar_transition_speed / 1000, ease: "easeInOut" }}
+                                                    transition={{ duration: animationSettings.bar_transition_speed_try2 / 1000, ease: "easeInOut" }}
                                                     style={{ backgroundColor: item.color }}
                                                     className="h-full flex items-center justify-center overflow-hidden"
                                                 >
@@ -432,7 +434,7 @@ export default function ResultsPage() {
                                 <div className="text-6xl font-black text-[#fffa00] tabular-nums tracking-tighter">
                                     <AnimatedCounter
                                         value={res.currentRevealedScore}
-                                        duration={animationSettings.bar_transition_speed}
+                                        duration={settings.currentTry === 1 ? animationSettings.bar_transition_speed : animationSettings.bar_transition_speed_try2}
                                     />
                                 </div>
                             </div>

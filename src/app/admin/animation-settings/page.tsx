@@ -10,6 +10,7 @@ interface AnimationSettings {
     id: number;
     label_display_time: number;
     bar_transition_speed: number;
+    bar_transition_speed_try2: number;
     sort_delay_time: number;
     sort_transition_speed: number;
     animation_style: string;
@@ -20,6 +21,7 @@ const DEFAULT_SETTINGS: AnimationSettings = {
     id: 1,
     label_display_time: 3000, // stored as ms in form, SQL schema uses NUMERIC but assumes ms for ease if we convert or keep as is. Actually schema default is 3.0. Let's store as MS.
     bar_transition_speed: 2000,
+    bar_transition_speed_try2: 3000,
     sort_delay_time: 3000,
     sort_transition_speed: 1500,
     animation_style: 'Pop-in',
@@ -52,6 +54,7 @@ export default function AnimationSettingsPage() {
                     id: 1,
                     label_display_time: Number(data.label_display_time),
                     bar_transition_speed: Number(data.bar_transition_speed),
+                    bar_transition_speed_try2: Number(data.bar_transition_speed_try2 || 3000),
                     sort_delay_time: Number(data.sort_delay_time),
                     sort_transition_speed: Number(data.sort_transition_speed),
                     animation_style: data.animation_style || 'Pop-in',
@@ -77,6 +80,7 @@ export default function AnimationSettingsPage() {
                     id: 1,
                     label_display_time: settings.label_display_time,
                     bar_transition_speed: settings.bar_transition_speed,
+                    bar_transition_speed_try2: settings.bar_transition_speed_try2,
                     sort_delay_time: settings.sort_delay_time,
                     sort_transition_speed: settings.sort_transition_speed,
                     animation_style: settings.animation_style,
@@ -107,7 +111,7 @@ export default function AnimationSettingsPage() {
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
-        const isNumeric = type === 'number' || ['label_display_time', 'bar_transition_speed', 'sort_delay_time', 'sort_transition_speed'].includes(name);
+        const isNumeric = type === 'number' || ['label_display_time', 'bar_transition_speed', 'bar_transition_speed_try2', 'sort_delay_time', 'sort_transition_speed'].includes(name);
         setSettings(prev => ({
             ...prev,
             [name]: isNumeric ? Number(value) : value
@@ -173,6 +177,21 @@ export default function AnimationSettingsPage() {
                                     value={settings.bar_transition_speed}
                                     onChange={handleChange}
                                     className="select select-bordered w-full"
+                                    required
+                                >
+                                    {timeOptions}
+                                </select>
+                            </div>
+
+                            <div className="form-control">
+                                <label className="label font-bold text-sm text-emerald-400">
+                                    【2nd Try】バー伸長 スピード
+                                </label>
+                                <select
+                                    name="bar_transition_speed_try2"
+                                    value={settings.bar_transition_speed_try2}
+                                    onChange={handleChange}
+                                    className="select select-bordered w-full border-emerald-500/50"
                                     required
                                 >
                                     {timeOptions}
